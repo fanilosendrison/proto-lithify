@@ -5,14 +5,15 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.2.0"
+version: "0.2.1"
 ---
 
 # Proto-Lithify
 
 `proto-lithify` is a mechanical GitHub Project V2 adapter for
 coding-agent workflows. It discovers live GitHub identities, performs explicit
-Project mutations, verifies postconditions, and emits versioned JSON receipts.
+Project mutations, verifies postconditions from both Issue and Project
+membership projections, and emits versioned JSON receipts.
 
 It does not decide workflow status, priority, readiness, Issue scope, or product
 semantics. Those decisions remain with the invoking agent policy and the target
