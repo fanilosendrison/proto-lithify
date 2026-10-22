@@ -32,7 +32,7 @@ const project = {
 	url: "https://github.com/users/example/projects/3",
 };
 
-function projectItemPage(
+function issueProjectItemPage(
 	nodes: readonly unknown[],
 	hasNextPage: boolean,
 	endCursor: string | null,
@@ -49,12 +49,36 @@ function projectItemPage(
 	};
 }
 
+function projectCollectionPage(
+	nodes: readonly unknown[],
+	hasNextPage: boolean,
+	endCursor: string | null,
+): unknown {
+	return {
+		data: {
+			node: {
+				items: { nodes, pageInfo: { hasNextPage, endCursor } },
+			},
+		},
+	};
+}
+
 describe("ProjectV2Client", () => {
-	it("paginates Issue Project items before selecting the exact Project", async () => {
+	it("paginates and matches the Issue and Project membership projections", async () => {
 		const executor = new QueuedExecutor([
 			project,
-			projectItemPage([], true, "cursor-1"),
-			projectItemPage([{ id: "PVTI_item", project: { ...project } }], false, null),
+			issueProjectItemPage([], true, "issue-cursor"),
+			issueProjectItemPage([{ id: "PVTI_item", project: { ...project } }], false, null),
+			projectCollectionPage(
+				[{ id: "PVTI_other", content: { id: "I_other" } }],
+				true,
+				"project-cursor",
+			),
+			projectCollectionPage(
+				[{ id: "PVTI_item", content: { id: "I_target" } }],
+				false,
+				null,
+			),
 			{
 				data: {
 					node: {
@@ -75,8 +99,89 @@ describe("ProjectV2Client", () => {
 		});
 
 		assert.strictEqual(snapshot.itemId, "PVTI_item");
-		assert.strictEqual(executor.calls.length, 4);
-		assert.ok(executor.calls[2]?.some((argument) => argument === "cursor=cursor-1"));
+		assert.strictEqual(executor.calls.length, 6);
+		assert.ok(
+			executor.calls[2]?.some((argument) => argument === "cursor=issue-cursor"),
+		);
+		assert.ok(
+			executor.calls[4]?.some((argument) => argument === "cursor=project-cursor"),
+		);
+		executor.assertDrained();
+	});
+
+	it("rejects an Issue-side item missing from the Project collection", async () => {
+		const executor = new QueuedExecutor([
+			project,
+			issueProjectItemPage(
+				[{ id: "PVTI_orphan", project: { ...project } }],
+				false,
+				null,
+			),
+			projectCollectionPage([], false, null),
+		]);
+		const client = new ProjectV2Client(executor.execute);
+
+		await assert.rejects(
+			client.inspectItem({
+				projectOwner: "example",
+				projectNumber: 3,
+				repository: "example/repository",
+				issueNumber: 42,
+			}),
+			/Inconsistent Project item membership.*Issue-side found 1; Project-side found 0/,
+		);
+		executor.assertDrained();
+	});
+
+	it("rejects a Project-side item missing from the Issue projection", async () => {
+		const executor = new QueuedExecutor([
+			project,
+			issueProjectItemPage([], false, null),
+			projectCollectionPage(
+				[{ id: "PVTI_orphan", content: { id: "I_target" } }],
+				false,
+				null,
+			),
+		]);
+		const client = new ProjectV2Client(executor.execute);
+
+		await assert.rejects(
+			client.inspectItem({
+				projectOwner: "example",
+				projectNumber: 3,
+				repository: "example/repository",
+				issueNumber: 42,
+			}),
+			/Inconsistent Project item membership.*Issue-side found 0; Project-side found 1/,
+		);
+		executor.assertDrained();
+	});
+
+	it("rejects contradictory item identities across membership projections", async () => {
+		const executor = new QueuedExecutor([
+			project,
+			issueProjectItemPage(
+				[{ id: "PVTI_issue", project: { ...project } }],
+				false,
+				null,
+			),
+			projectCollectionPage(
+				[{ id: "PVTI_project", content: { id: "I_target" } }],
+				false,
+				null,
+			),
+		]);
+		const client = new ProjectV2Client(executor.execute);
+
+		await assert.rejects(
+			client.inspectItem({
+				projectOwner: "example",
+				projectNumber: 3,
+				repository: "example/repository",
+				issueNumber: 42,
+			}),
+			/Issue-side and Project-side item ids differ/,
+		);
 		executor.assertDrained();
 	});
 

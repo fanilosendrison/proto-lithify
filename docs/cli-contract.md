@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.2.0"
+version: "0.2.1"
 ---
 
 # CLI contract
@@ -22,7 +22,8 @@ before GitHub access.
 Success writes exactly one JSON receipt to stdout. Diagnostics and errors write
 to stderr. Receipt schema version 1 distinguishes `inspected`, `applied`, and
 `noop`. Mutation success requires a fresh read proving the requested
-postcondition.
+postcondition. Project membership is established only when the Issue projection
+and the Project's own item collection contain the same unique item identity.
 
 Published JSON Schemas are generated under `schemas/` from the runtime Zod
 contracts.

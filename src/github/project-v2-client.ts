@@ -10,7 +10,10 @@ import {
 	type ProjectSnapshot,
 	ProjectSnapshotSchema,
 } from "../receipts/schemas.ts";
+import { resolveProjectItemMembership } from "./project-item-membership.ts";
 import type { GhExecutor } from "./types.ts";
+
+export { ProjectItemNotFoundError } from "./project-item-membership.ts";
 
 const PageInfoSchema = z.object({
 	hasNextPage: z.boolean(),
@@ -24,7 +27,8 @@ const ProjectViewSchema = z.object({
 	url: z.string().url(),
 });
 
-const PROJECT_ITEMS_QUERY = `query($owner:String!,$repository:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$repository){issue(number:$number){id projectItems(first:100,after:$cursor){nodes{id project{id number title url}} pageInfo{hasNextPage endCursor}}}}}`;
+const ISSUE_PROJECT_ITEMS_QUERY = `query($owner:String!,$repository:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$repository){issue(number:$number){id projectItems(first:100,after:$cursor){nodes{id project{id number title url}} pageInfo{hasNextPage endCursor}}}}}`;
+const PROJECT_COLLECTION_ITEMS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{items(first:100,after:$cursor,archivedStates:[NOT_ARCHIVED]){nodes{id content{... on Issue{id}}} pageInfo{hasNextPage endCursor}}}}}`;
 const ITEM_FIELDS_QUERY = `query($itemId:ID!,$cursor:String){node(id:$itemId){... on ProjectV2Item{fieldValues(first:100,after:$cursor){nodes{__typename ... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldNumberValue{number field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldDateValue{date field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldIterationValue{title field{... on ProjectV2FieldCommon{name}}}} pageInfo{hasNextPage endCursor}}}}}`;
 const PROJECT_FIELDS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{fields(first:100,after:$cursor){nodes{__typename ... on ProjectV2Field{id name dataType} ... on ProjectV2IterationField{id name} ... on ProjectV2SingleSelectField{id name options{id name}}} pageInfo{hasNextPage endCursor}}}}}`;
 const PROJECT_VIEWS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{views(first:100,after:$cursor){nodes{name layout filter} pageInfo{hasNextPage endCursor}}}}}`;
@@ -68,13 +72,6 @@ function connection(value: unknown, description: string): ConnectionPage<JsonRec
 	return { nodes, pageInfo };
 }
 
-export class ProjectItemNotFoundError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = "ProjectItemNotFoundError";
-	}
-}
-
 export class ProjectV2Client implements GithubProjectGateway {
 	private readonly execute: GhExecutor;
 
@@ -110,10 +107,10 @@ export class ProjectV2Client implements GithubProjectGateway {
 		const [repositoryOwner, repositoryName] = splitRepository(request.repository);
 		let cursor: string | null = null;
 		let issueId: string | null = null;
-		const matches: JsonRecord[] = [];
+		const issueMatches: JsonRecord[] = [];
 
 		do {
-			const response = await this.graphql(PROJECT_ITEMS_QUERY, {
+			const response = await this.graphql(ISSUE_PROJECT_ITEMS_QUERY, {
 				owner: repositoryOwner,
 				repository: repositoryName,
 				number: request.issueNumber,
@@ -134,22 +131,18 @@ export class ProjectV2Client implements GithubProjectGateway {
 			const page = connection(issue.projectItems, "Issue Project items");
 			for (const node of page.nodes) {
 				const nodeProject = asRecord(node.project, "Project item Project");
-				if (nodeProject.id === project.id) matches.push(node);
+				if (nodeProject.id === project.id) issueMatches.push(node);
 			}
 			cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
 		} while (cursor !== null);
 
-		if (matches.length === 0) {
-			throw new ProjectItemNotFoundError(
-				`Issue ${request.repository}#${request.issueNumber} is not in Project ${request.projectOwner}/${request.projectNumber}`,
-			);
-		}
-		if (matches.length !== 1) {
-			throw new Error(
-				`Expected exactly one Project item for ${request.repository}#${request.issueNumber} in ${request.projectOwner}/${request.projectNumber}; found ${matches.length}`,
-			);
-		}
-		const itemId = asString(matches[0]?.id, "Project item id");
+		const exactIssueId = asString(issueId, "Issue id");
+		const projectMatches = await this.findProjectItems(project.id, exactIssueId);
+		const itemId = resolveProjectItemMembership(
+			request,
+			issueMatches.map((item) => asString(item.id, "Issue-side Project item id")),
+			projectMatches.map((item) => asString(item.id, "Project-side Project item id")),
+		);
 		const fields = await this.readItemFields(itemId);
 		return ItemSnapshotSchema.parse({
 			project,
@@ -226,6 +219,29 @@ export class ProjectV2Client implements GithubProjectGateway {
 			"--format",
 			"json",
 		]);
+	}
+
+	private async findProjectItems(
+		projectId: string,
+		issueId: string,
+	): Promise<readonly JsonRecord[]> {
+		let cursor: string | null = null;
+		const matches: JsonRecord[] = [];
+		do {
+			const response = await this.graphql(PROJECT_COLLECTION_ITEMS_QUERY, {
+				projectId,
+				cursor,
+			});
+			const node = asRecord(asRecord(response.data, "GraphQL data").node, "Project");
+			const page = connection(node.items, "Project items");
+			for (const item of page.nodes) {
+				if (typeof item.content !== "object" || item.content === null) continue;
+				const content = asRecord(item.content, "Project item content");
+				if (content.id === issueId) matches.push(item);
+			}
+			cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+		} while (cursor !== null);
+		return matches;
 	}
 
 	private async graphql(

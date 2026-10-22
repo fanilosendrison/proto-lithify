@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify standalone installation"
-version: "0.2.0"
+version: "0.2.1"
 ---
 
 # Standalone installation
