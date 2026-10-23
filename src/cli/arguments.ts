@@ -1,3 +1,5 @@
+import { splitGitHubRepository } from "../github/issue-identity.ts";
+
 export class CliUsageError extends Error {
 	readonly code: string;
 
@@ -22,7 +24,7 @@ export type CliCommand =
 	| { readonly name: "doctor" }
 	| ({ readonly name: "project.inspect" } & ProjectArguments)
 	| ({ readonly name: "item.inspect" } & ItemArguments)
-	| ({ readonly name: "item.add"; readonly issueUrl: string } & ItemArguments)
+	| ({ readonly name: "item.add" } & ItemArguments)
 	| ({
 			readonly name: "field.set";
 			readonly fieldName: string;
@@ -55,12 +57,8 @@ export function parseArguments(args: readonly string[]): CliCommand {
 	}
 
 	if (commandName === "item.add") {
-		const flags = parseFlags(flagArguments, [...itemFlagNames, "issue-url"]);
-		return {
-			name: commandName,
-			...itemArguments(flags),
-			issueUrl: validIssueUrl(flags["issue-url"]),
-		};
+		const flags = parseFlags(flagArguments, itemFlagNames);
+		return { name: commandName, ...itemArguments(flags) };
 	}
 
 	if (commandName === "field.set") {
@@ -145,25 +143,18 @@ function positiveInteger(value: string, name: string): number {
 	if (!/^[1-9]\d*$/.test(value)) {
 		throw new CliUsageError("INVALID_INTEGER", `--${name} must be a positive integer`);
 	}
-	return Number(value);
+	const number = Number(value);
+	if (!Number.isSafeInteger(number)) {
+		throw new CliUsageError("INVALID_INTEGER", `--${name} must be a positive integer`);
+	}
+	return number;
 }
 
 function validRepository(value: string): string {
-	if (!/^[^/\s]+\/[^/\s]+$/.test(value)) {
+	try {
+		splitGitHubRepository(value);
+	} catch {
 		throw new CliUsageError("INVALID_REPOSITORY", "--repo must use owner/name");
 	}
 	return value;
-}
-
-function validIssueUrl(value: string): string {
-	let url: URL;
-	try {
-		url = new URL(value);
-	} catch {
-		throw new CliUsageError("INVALID_ISSUE_URL", "--issue-url must be an absolute URL");
-	}
-	if (url.protocol !== "https:") {
-		throw new CliUsageError("INVALID_ISSUE_URL", "--issue-url must use HTTPS");
-	}
-	return url.href;
 }

@@ -10,6 +10,7 @@ import {
 	type ProjectSnapshot,
 	ProjectSnapshotSchema,
 } from "../receipts/schemas.ts";
+import { githubIssueUrl, splitGitHubRepository } from "./issue-identity.ts";
 import { resolveProjectItemMembership } from "./project-item-membership.ts";
 import type { GhExecutor } from "./types.ts";
 
@@ -54,14 +55,6 @@ function asString(value: unknown, description: string): string {
 	return value;
 }
 
-function splitRepository(repository: string): readonly [string, string] {
-	const parts = repository.split("/");
-	if (parts.length !== 2 || !parts[0] || !parts[1]) {
-		throw new Error(`repository must use owner/name: ${JSON.stringify(repository)}`);
-	}
-	return [parts[0], parts[1]];
-}
-
 function connection(value: unknown, description: string): ConnectionPage<JsonRecord> {
 	const record = asRecord(value, description);
 	const nodes = z.array(z.record(z.string(), z.unknown())).parse(record.nodes);
@@ -104,7 +97,7 @@ export class ProjectV2Client implements GithubProjectGateway {
 
 	async inspectItem(request: ItemInspectionRequest): Promise<ItemSnapshot> {
 		const project = await this.getProject(request.projectOwner, request.projectNumber);
-		const [repositoryOwner, repositoryName] = splitRepository(request.repository);
+		const [repositoryOwner, repositoryName] = splitGitHubRepository(request.repository);
 		let cursor: string | null = null;
 		let issueId: string | null = null;
 		const issueMatches: JsonRecord[] = [];
@@ -203,11 +196,8 @@ export class ProjectV2Client implements GithubProjectGateway {
 		]);
 	}
 
-	async addItem(request: {
-		readonly projectOwner: string;
-		readonly projectNumber: number;
-		readonly issueUrl: string;
-	}): Promise<void> {
+	async addItem(request: ItemInspectionRequest): Promise<void> {
+		const issueUrl = githubIssueUrl(request.repository, request.issueNumber);
 		await this.execute([
 			"project",
 			"item-add",
@@ -215,7 +205,7 @@ export class ProjectV2Client implements GithubProjectGateway {
 			"--owner",
 			request.projectOwner,
 			"--url",
-			request.issueUrl,
+			issueUrl,
 			"--format",
 			"json",
 		]);

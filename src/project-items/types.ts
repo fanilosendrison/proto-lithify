@@ -25,9 +25,5 @@ export interface GithubProjectGateway {
 		readonly fieldId: string;
 		readonly optionId: string;
 	}): Promise<void>;
-	addItem(request: {
-		readonly projectOwner: string;
-		readonly projectNumber: number;
-		readonly issueUrl: string;
-	}): Promise<void>;
+	addItem(request: ItemInspectionRequest): Promise<void>;
 }

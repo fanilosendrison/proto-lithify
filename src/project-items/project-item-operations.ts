@@ -1,3 +1,4 @@
+import { githubIssueUrl } from "../github/issue-identity.ts";
 import { ProjectItemNotFoundError } from "../github/project-v2-client.ts";
 import {
 	type CommandReceipt,
@@ -9,10 +10,6 @@ import type {
 	ItemInspectionRequest,
 	SingleSelectRequest,
 } from "./types.ts";
-
-export interface AddItemRequest extends ItemInspectionRequest {
-	readonly issueUrl: string;
-}
 
 export class ProjectItemOperations {
 	private readonly gateway: GithubProjectGateway;
@@ -75,8 +72,9 @@ export class ProjectItemOperations {
 	}
 
 	async addItem(
-		request: AddItemRequest,
+		request: ItemInspectionRequest,
 	): Promise<CommandReceipt<ItemSnapshot | null, ItemSnapshot>> {
+		const issueUrl = githubIssueUrl(request.repository, request.issueNumber);
 		let before: ItemSnapshot | null = null;
 		try {
 			before = await this.gateway.inspectItem(request);
@@ -88,7 +86,7 @@ export class ProjectItemOperations {
 				command: "item.add",
 				outcome: "noop",
 				target: targetOf(request),
-				request: { issueUrl: request.issueUrl },
+				request: { issueUrl },
 				before,
 				after: before,
 				postcondition: {
@@ -104,7 +102,7 @@ export class ProjectItemOperations {
 			command: "item.add",
 			outcome: "applied",
 			target: targetOf(request),
-			request: { issueUrl: request.issueUrl },
+			request: { issueUrl },
 			before: null,
 			after,
 			postcondition: {

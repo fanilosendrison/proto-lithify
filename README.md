@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.2.1"
+version: "0.3.0"
 ---
 
 # Proto-Lithify
@@ -59,10 +59,13 @@ The installed command does not depend on this checkout or invoke pnpm.
 proto-lithify doctor
 proto-lithify project inspect --project-owner <owner> --project-number <number>
 proto-lithify item inspect --project-owner <owner> --project-number <number> --repo <owner/repository> --issue <number>
-proto-lithify item add --project-owner <owner> --project-number <number> --repo <owner/repository> --issue <number> --issue-url <url>
+proto-lithify item add --project-owner <owner> --project-number <number> --repo <owner/repository> --issue <number>
 proto-lithify field set --project-owner <owner> --project-number <number> --repo <owner/repository> --issue <number> --field-name <field> --option-name <option>
 proto-lithify dependency add-blocker --repo <owner/repository> --issue <number> --blocker <number>
 ```
+
+`item add` derives the GitHub Issue URL exclusively from `--repo` and `--issue`.
+The former independent `--issue-url` flag is rejected.
 
 See [the CLI contract](docs/cli-contract.md) and
 [the architecture](docs/architecture.md) for authority and output guarantees.

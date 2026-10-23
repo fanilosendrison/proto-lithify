@@ -185,6 +185,33 @@ describe("ProjectV2Client", () => {
 		executor.assertDrained();
 	});
 
+	it("derives the add URL from an Issue owner distinct from the Project owner", async () => {
+		const executor = new QueuedExecutor([{}]);
+		const client = new ProjectV2Client(executor.execute);
+
+		await client.addItem({
+			projectOwner: "example",
+			projectNumber: 3,
+			repository: "other/repo_name.with-dots",
+			issueNumber: 42,
+		});
+
+		assert.deepStrictEqual(executor.calls, [
+			[
+				"project",
+				"item-add",
+				"3",
+				"--owner",
+				"example",
+				"--url",
+				"https://github.com/other/repo_name.with-dots/issues/42",
+				"--format",
+				"json",
+			],
+		]);
+		executor.assertDrained();
+	});
+
 	it("rejects ambiguous exact field names", async () => {
 		const executor = new QueuedExecutor([
 			{

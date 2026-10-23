@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.2.1"
+version: "0.3.0"
 ---
 
 # CLI contract
@@ -17,6 +17,12 @@ persisted opaque GitHub IDs as configuration. Unknown commands, flags, duplicate
 flags, malformed repositories, and non-positive Issue or Project numbers fail
 before GitHub access.
 
+`item.add` has one canonical Issue identity: the validated `owner/repository`
+and positive safe-integer Issue number. The command derives the mutation URL
+from that identity and rejects an independent `--issue-url` input before GitHub
+access. The `request.issueUrl` value in a successful receipt is this derived URL,
+not an accepted command argument.
+
 ## Output
 
 Success writes exactly one JSON receipt to stdout. Diagnostics and errors write
@@ -27,6 +33,9 @@ and the Project's own item collection contain the same unique item identity.
 
 Published JSON Schemas are generated under `schemas/` from the runtime Zod
 contracts.
+
+Version 0.3.0 removes the `--issue-url` input accepted by version 0.2.1. This is
+an intentional breaking CLI change; receipt schema version 1 remains unchanged.
 
 ## Failure
 
