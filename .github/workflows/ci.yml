@@ -58,6 +58,9 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Standalone installation qualification
+        run: node --test --test-concurrency=1 --test-reporter=tap tests/standalone-ci.test.mjs
+
       - name: Diff check
         shell: bash
         env:
