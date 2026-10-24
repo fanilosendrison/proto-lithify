@@ -30,8 +30,19 @@ export interface InstallStandaloneResult {
 	readonly reused: boolean;
 }
 
+export interface InstallStandaloneFileOperations {
+	readonly rename: (source: string, destination: string) => Promise<void>;
+	readonly remove: (target: string) => Promise<void>;
+}
+
+const defaultFileOperations: InstallStandaloneFileOperations = {
+	rename: async (source, destination) => await rename(source, destination),
+	remove: async (target) => await rm(target, { recursive: true, force: true }),
+};
+
 export async function installStandalone(
 	request: InstallStandaloneRequest,
+	fileOperations: InstallStandaloneFileOperations = defaultFileOperations,
 ): Promise<InstallStandaloneResult> {
 	validateRequest(request);
 	const digest = await computeTreeDigest(request.payloadRoot);
@@ -50,18 +61,21 @@ export async function installStandalone(
 				`Existing release path is not a physical directory: ${releaseDirectory}`,
 			);
 		}
-		const existingDigest = await computeTreeDigest(releaseDirectory);
-		if (existingDigest !== digest) {
-			throw new Error(
-				`Existing release content does not match its digest: ${releaseDirectory}`,
-			);
-		}
+		await verifyReleaseDigest(releaseDirectory, digest);
 		reused = true;
 	} catch (error) {
 		if (!isMissing(error)) throw error;
-		await createRelease(request.payloadRoot, releasesRoot, releaseDirectory);
+		await createRelease(
+			request.payloadRoot,
+			releasesRoot,
+			releaseDirectory,
+			digest,
+			fileOperations,
+		);
 	}
+	await verifyReleaseDigest(releaseDirectory, digest);
 	await makeTreeReadOnly(releaseDirectory);
+	await verifyTreeReadOnly(releaseDirectory);
 
 	const currentLink = path.join(applicationRoot, "current");
 	await activateCurrent(applicationRoot, currentLink, releaseName);
@@ -78,11 +92,14 @@ async function createRelease(
 	payloadRoot: string,
 	releasesRoot: string,
 	releaseDirectory: string,
+	expectedDigest: string,
+	fileOperations: InstallStandaloneFileOperations,
 ): Promise<void> {
 	const staging = path.join(
 		releasesRoot,
 		`.staging-${randomBytes(16).toString("hex")}`,
 	);
+	let operationError: unknown;
 	try {
 		await cp(payloadRoot, staging, {
 			recursive: true,
@@ -90,16 +107,79 @@ async function createRelease(
 			force: false,
 			verbatimSymlinks: true,
 		});
+		await makeStagingDirectoriesWritable(staging);
+		await verifyReleaseDigest(staging, expectedDigest);
 		try {
-			await rename(staging, releaseDirectory);
+			await fileOperations.rename(staging, releaseDirectory);
 		} catch (error) {
 			if (!isAlreadyExists(error)) throw error;
-			const expectedDigest = await computeTreeDigest(payloadRoot);
-			const observedDigest = await computeTreeDigest(releaseDirectory);
-			if (expectedDigest !== observedDigest) throw error;
+			await verifyReleaseDigest(releaseDirectory, expectedDigest);
 		}
-	} finally {
-		await rm(staging, { recursive: true, force: true });
+	} catch (error) {
+		operationError = error;
+	}
+
+	let cleanupError: unknown;
+	try {
+		await cleanupStaging(staging, fileOperations.remove);
+	} catch (error) {
+		cleanupError = error;
+	}
+	if (operationError !== undefined && cleanupError !== undefined) {
+		throw new AggregateError(
+			[operationError, cleanupError],
+			"Release creation failed and staging cleanup also failed",
+			{ cause: operationError },
+		);
+	}
+	if (operationError !== undefined) throw operationError;
+	if (cleanupError !== undefined) throw cleanupError;
+}
+
+async function makeStagingDirectoriesWritable(directory: string): Promise<void> {
+	const stats = await lstat(directory);
+	if (stats.isSymbolicLink() || !stats.isDirectory()) {
+		throw new Error(`Release staging path is not a physical directory: ${directory}`);
+	}
+	await chmod(directory, (stats.mode & 0o777) | 0o700);
+	for (const entry of await readdir(directory, { withFileTypes: true })) {
+		const target = path.join(directory, entry.name);
+		const entryStats = await lstat(target);
+		if (entryStats.isSymbolicLink()) {
+			throw new Error(`Release staging must not contain symlinks: ${target}`);
+		}
+		if (entryStats.isDirectory()) {
+			await makeStagingDirectoriesWritable(target);
+			continue;
+		}
+		if (!entryStats.isFile()) {
+			throw new Error(`Release staging contains a special file: ${target}`);
+		}
+	}
+}
+
+async function cleanupStaging(
+	staging: string,
+	remove: (target: string) => Promise<void>,
+): Promise<void> {
+	try {
+		await makeStagingDirectoriesWritable(staging);
+	} catch (error) {
+		if (isMissing(error)) return;
+		throw error;
+	}
+	await remove(staging);
+}
+
+async function verifyReleaseDigest(
+	releaseDirectory: string,
+	expectedDigest: string,
+): Promise<void> {
+	const observedDigest = await computeTreeDigest(releaseDirectory);
+	if (observedDigest !== expectedDigest) {
+		throw new Error(
+			`Existing release content does not match its digest: ${releaseDirectory}`,
+		);
 	}
 }
 
@@ -111,15 +191,43 @@ async function makeTreeReadOnly(directory: string): Promise<void> {
 			await makeTreeReadOnly(target);
 			await chmod(target, 0o555);
 		} else if (entry.isFile()) {
-			await chmod(
-				target,
-				target.endsWith(".mjs") && target.includes(`${path.sep}bin${path.sep}`)
-					? 0o555
-					: 0o444,
-			);
+			await chmod(target, immutableFileMode(target));
 		}
 	}
 	await chmod(directory, 0o555);
+}
+
+async function verifyTreeReadOnly(directory: string): Promise<void> {
+	const directoryStats = await lstat(directory);
+	if (!directoryStats.isDirectory() || directoryStats.isSymbolicLink()) {
+		throw new Error(`Published release path is not a physical directory: ${directory}`);
+	}
+	if ((directoryStats.mode & 0o777) !== 0o555) {
+		throw new Error(`Published release directory is not immutable: ${directory}`);
+	}
+	for (const entry of await readdir(directory, { withFileTypes: true })) {
+		const target = path.join(directory, entry.name);
+		const stats = await lstat(target);
+		if (stats.isSymbolicLink()) {
+			throw new Error(`Published release must not contain symlinks: ${target}`);
+		}
+		if (stats.isDirectory()) {
+			await verifyTreeReadOnly(target);
+			continue;
+		}
+		if (!stats.isFile()) {
+			throw new Error(`Published release contains a special file: ${target}`);
+		}
+		if ((stats.mode & 0o777) !== immutableFileMode(target)) {
+			throw new Error(`Published release file is not immutable: ${target}`);
+		}
+	}
+}
+
+function immutableFileMode(target: string): number {
+	return target.endsWith(".mjs") && target.includes(`${path.sep}bin${path.sep}`)
+		? 0o555
+		: 0o444;
 }
 
 async function activateCurrent(
