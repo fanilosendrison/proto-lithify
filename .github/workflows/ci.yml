@@ -1,0 +1,82 @@
+name: Proto-Lithify CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: proto-lithify / validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 11.24.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = "v22.19.0"
+          test "$(pnpm --version)" = "11.24.0"
+
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Diff check
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          git diff --check
+
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            git diff --check origin/main...HEAD
+          elif [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            if [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] &&
+               [[ "$BASE_SHA" != "0000000000000000000000000000000000000000" ]] &&
+               git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+              git diff --check "$BASE_SHA" HEAD
+            else
+              git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+            fi
+          fi
+
+          git diff --exit-code
