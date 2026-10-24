@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.3.0"
+version: "0.3.1"
 ---
 
 # CLI contract
@@ -36,6 +36,8 @@ contracts.
 
 Version 0.3.0 removes the `--issue-url` input accepted by version 0.2.1. This is
 an intentional breaking CLI change; receipt schema version 1 remains unchanged.
+Version 0.3.1 changes only standalone installation from already immutable
+payloads; the CLI input and receipt contracts remain unchanged.
 
 ## Failure
 

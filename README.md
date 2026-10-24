@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.3.0"
+version: "0.3.1"
 ---
 
 # Proto-Lithify
@@ -52,6 +52,8 @@ The installer deploys an immutable content-addressed release below
 ```
 
 The installed command does not depend on this checkout or invoke pnpm.
+Version 0.3.1 supports installation from an already immutable payload on
+filesystems that prohibit renaming write-disabled directories.
 
 ## Commands
 

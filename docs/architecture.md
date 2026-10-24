@@ -5,7 +5,7 @@ asset_type: "architecture"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify architecture"
-version: "0.3.0"
+version: "0.3.1"
 ---
 
 # Architecture
@@ -47,10 +47,15 @@ mutation URL derivation, and fresh postcondition verification.
 - `src/project-items/` owns exact item and field mutation orchestration.
 - `src/issue-relations/` owns explicit blocked-by relationships.
 - `src/receipts/` owns public output schemas.
-- `src/installation/` owns immutable standalone installation.
+- `src/installation/` owns immutable standalone installation. It keeps
+  task-owned staging directories writable through atomic publication, then
+  verifies content and immutable permissions before activation. This supports
+  immutable payload sources without changing their permissions.
 
 ## Exclusions
 
-Version 0.3.0 has no LLM, daemon, SQLite database, Turnlock workflow, profile
-parser, work selector, or GitHub command enforcer. Multi-command transactions
-are not claimed; each command exposes and verifies only its own effect.
+Version 0.3.0, as originally released, had no LLM, daemon, SQLite database,
+Turnlock workflow, profile parser, work selector, or GitHub command enforcer.
+Version 0.3.1 retains these exclusions and changes only standalone installation
+behavior. Neither version claims multi-command transactions; each command
+exposes and verifies only its own effect.

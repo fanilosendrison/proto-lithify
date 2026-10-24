@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify standalone installation"
-version: "0.3.0"
+version: "0.3.1"
 ---
 
 # Standalone installation
@@ -23,3 +23,9 @@ Old releases are preserved. Rollback consists of atomically selecting a
 previous verified release; no release or target GitHub state is deleted during
 rollback. The installed runtime requires Node.js and `gh`, but not pnpm or the
 source checkout.
+
+Version 0.3.1 keeps copied staging directories temporarily writable until their
+atomic publication. This permits an already immutable release to serve as an
+installation payload on filesystems that prohibit renaming write-disabled
+directories. Source payload permissions remain unchanged, and every published
+release is verified and returned to immutable permissions before activation.
