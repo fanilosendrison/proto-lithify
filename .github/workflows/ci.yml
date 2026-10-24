@@ -61,9 +61,6 @@ jobs:
       - name: Standalone installation qualification
         run: node --test --test-concurrency=1 --test-reporter=tap tests/standalone-ci.test.mjs
 
-      - name: Deliberate required-check failure probe
-        run: exit 1
-
       - name: Diff check
         shell: bash
         env:
