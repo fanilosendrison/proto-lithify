@@ -11,7 +11,14 @@ import {
 	ProjectSnapshotSchema,
 } from "../receipts/schemas.ts";
 import { githubIssueUrl, splitGitHubRepository } from "./issue-identity.ts";
-import { resolveProjectItemMembership } from "./project-item-membership.ts";
+import {
+	assertProjectFieldObservation,
+	assertProjectGraphqlResponseHasNoErrors,
+	nextProjectObservationCursor,
+	type ProjectMembershipObservation,
+	parseProjectMembershipObservation,
+	resolveProjectItemMembership,
+} from "./project-item-membership.ts";
 import type { GhExecutor } from "./types.ts";
 
 export { ProjectItemNotFoundError } from "./project-item-membership.ts";
@@ -28,9 +35,9 @@ const ProjectViewSchema = z.object({
 	url: z.string().url(),
 });
 
-const ISSUE_PROJECT_ITEMS_QUERY = `query($owner:String!,$repository:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$repository){issue(number:$number){id projectItems(first:100,after:$cursor){nodes{id project{id number title url}} pageInfo{hasNextPage endCursor}}}}}`;
-const PROJECT_COLLECTION_ITEMS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{items(first:100,after:$cursor,archivedStates:[NOT_ARCHIVED]){nodes{id content{... on Issue{id}}} pageInfo{hasNextPage endCursor}}}}}`;
-const ITEM_FIELDS_QUERY = `query($itemId:ID!,$cursor:String){node(id:$itemId){... on ProjectV2Item{fieldValues(first:100,after:$cursor){nodes{__typename ... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldNumberValue{number field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldDateValue{date field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldIterationValue{title field{... on ProjectV2FieldCommon{name}}}} pageInfo{hasNextPage endCursor}}}}}`;
+const ISSUE_PROJECT_ITEMS_QUERY = `query($owner:String!,$repository:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$repository){issue(number:$number){id projectItems(first:100,after:$cursor,includeArchived:true){nodes{id isArchived project{id number title url}} pageInfo{hasNextPage endCursor}}}}}`;
+const PROJECT_COLLECTION_ITEMS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{items(first:100,after:$cursor,archivedStates:[ARCHIVED,NOT_ARCHIVED]){nodes{id isArchived content{... on Issue{id}}} pageInfo{hasNextPage endCursor}}}}}`;
+const ITEM_FIELDS_QUERY = `query($itemId:ID!,$cursor:String){node(id:$itemId){... on ProjectV2Item{id isArchived fieldValues(first:100,after:$cursor){nodes{__typename ... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldNumberValue{number field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldDateValue{date field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldIterationValue{title field{... on ProjectV2FieldCommon{name}}}} pageInfo{hasNextPage endCursor}}}}}`;
 const PROJECT_FIELDS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{fields(first:100,after:$cursor){nodes{__typename ... on ProjectV2Field{id name dataType} ... on ProjectV2IterationField{id name} ... on ProjectV2SingleSelectField{id name options{id name}}} pageInfo{hasNextPage endCursor}}}}}`;
 const PROJECT_VIEWS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{views(first:100,after:$cursor){nodes{name layout filter} pageInfo{hasNextPage endCursor}}}}}`;
 
@@ -100,7 +107,8 @@ export class ProjectV2Client implements GithubProjectGateway {
 		const [repositoryOwner, repositoryName] = splitGitHubRepository(request.repository);
 		let cursor: string | null = null;
 		let issueId: string | null = null;
-		const issueMatches: JsonRecord[] = [];
+		const issueMatches: ProjectMembershipObservation[] = [];
+		const issueCursors = new Set<string>();
 
 		do {
 			const response = await this.graphql(ISSUE_PROJECT_ITEMS_QUERY, {
@@ -120,23 +128,41 @@ export class ProjectV2Client implements GithubProjectGateway {
 				);
 			}
 			const issue = asRecord(issueValue, "GraphQL Issue");
-			issueId ??= asString(issue.id, "Issue id");
+			const pageIssueId = asString(issue.id, "Issue id");
+			if (issueId !== null && issueId !== pageIssueId) {
+				throw new Error("Issue id changed during Project item pagination");
+			}
+			issueId = pageIssueId;
 			const page = connection(issue.projectItems, "Issue Project items");
 			for (const node of page.nodes) {
 				const nodeProject = asRecord(node.project, "Project item Project");
-				if (nodeProject.id === project.id) issueMatches.push(node);
+				const nodeProjectId = asString(nodeProject.id, "Project item Project id");
+				if (nodeProjectId === project.id) {
+					issueMatches.push(
+						parseProjectMembershipObservation(
+							node.id,
+							node.isArchived,
+							"Issue-side Project item",
+						),
+					);
+				}
 			}
-			cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+			cursor = nextProjectObservationCursor(
+				page,
+				cursor,
+				issueCursors,
+				"Issue Project items",
+			);
 		} while (cursor !== null);
 
 		const exactIssueId = asString(issueId, "Issue id");
 		const projectMatches = await this.findProjectItems(project.id, exactIssueId);
-		const itemId = resolveProjectItemMembership(
+		const membership = resolveProjectItemMembership(
 			request,
-			issueMatches.map((item) => asString(item.id, "Issue-side Project item id")),
-			projectMatches.map((item) => asString(item.id, "Project-side Project item id")),
+			issueMatches,
+			projectMatches,
 		);
-		const fields = await this.readItemFields(itemId);
+		const fields = await this.readItemFields(membership);
 		return ItemSnapshotSchema.parse({
 			project,
 			issue: {
@@ -144,7 +170,8 @@ export class ProjectV2Client implements GithubProjectGateway {
 				number: request.issueNumber,
 				repository: request.repository,
 			},
-			itemId,
+			itemId: membership.id,
+			isArchived: membership.isArchived,
 			fields,
 		});
 	}
@@ -214,9 +241,10 @@ export class ProjectV2Client implements GithubProjectGateway {
 	private async findProjectItems(
 		projectId: string,
 		issueId: string,
-	): Promise<readonly JsonRecord[]> {
+	): Promise<readonly ProjectMembershipObservation[]> {
 		let cursor: string | null = null;
-		const matches: JsonRecord[] = [];
+		const matches: ProjectMembershipObservation[] = [];
+		const cursors = new Set<string>();
 		do {
 			const response = await this.graphql(PROJECT_COLLECTION_ITEMS_QUERY, {
 				projectId,
@@ -227,9 +255,20 @@ export class ProjectV2Client implements GithubProjectGateway {
 			for (const item of page.nodes) {
 				if (typeof item.content !== "object" || item.content === null) continue;
 				const content = asRecord(item.content, "Project item content");
-				if (content.id === issueId) matches.push(item);
+				if (content.id !== undefined && typeof content.id !== "string") {
+					throw new Error("Project item Issue id must be a string");
+				}
+				if (content.id === issueId) {
+					matches.push(
+						parseProjectMembershipObservation(
+							item.id,
+							item.isArchived,
+							"Project-side Project item",
+						),
+					);
+				}
 			}
-			cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+			cursor = nextProjectObservationCursor(page, cursor, cursors, "Project items");
 		} while (cursor !== null);
 		return matches;
 	}
@@ -244,18 +283,27 @@ export class ProjectV2Client implements GithubProjectGateway {
 			args.push(typeof value === "number" ? "-F" : "-f", `${name}=${value}`);
 		}
 		const output = await this.execute(args);
-		return asRecord(JSON.parse(output.stdout), "GraphQL response");
+		const response = asRecord(JSON.parse(output.stdout), "GraphQL response");
+		assertProjectGraphqlResponseHasNoErrors(response);
+		return response;
 	}
 
-	private async readItemFields(itemId: string): Promise<Record<string, string | null>> {
+	private async readItemFields(
+		membership: ProjectMembershipObservation,
+	): Promise<Record<string, string | null>> {
 		let cursor: string | null = null;
 		const fields: Record<string, string | null> = {};
+		const cursors = new Set<string>();
 		do {
-			const response = await this.graphql(ITEM_FIELDS_QUERY, { itemId, cursor });
+			const response = await this.graphql(ITEM_FIELDS_QUERY, {
+				itemId: membership.id,
+				cursor,
+			});
 			const node = asRecord(
 				asRecord(response.data, "GraphQL data").node,
 				"Project item",
 			);
+			assertProjectFieldObservation(node.id, node.isArchived, membership);
 			const page = connection(node.fieldValues, "Project item field values");
 			for (const fieldValue of page.nodes) {
 				if (
@@ -281,7 +329,12 @@ export class ProjectV2Client implements GithubProjectGateway {
 					null;
 				fields[name] = value === null ? null : String(value);
 			}
-			cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+			cursor = nextProjectObservationCursor(
+				page,
+				cursor,
+				cursors,
+				"Project item field values",
+			);
 		} while (cursor !== null);
 		return fields;
 	}

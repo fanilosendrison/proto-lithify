@@ -43,6 +43,11 @@ export class ProjectItemOperations {
 				},
 			});
 		}
+		if (before.isArchived) {
+			throw new Error(
+				"Cannot mutate a field on an archived Project item; unarchive must be explicit",
+			);
+		}
 
 		const { fieldId, optionId } = await this.gateway.resolveSingleSelect(
 			before.project.id,
@@ -61,6 +66,11 @@ export class ProjectItemOperations {
 			this.gateway,
 		);
 		assertSameTarget(before, after);
+		if (after.isArchived) {
+			throw new Error(
+				"Field mutation archive-state postcondition failed after submission: the Project item is archived; do not retry automatically",
+			);
+		}
 		if (after.fields[request.fieldName] !== request.optionName) {
 			throw new Error(
 				`Field mutation postcondition failed after submission: ${JSON.stringify(request.fieldName)} is not ${JSON.stringify(request.optionName)}; do not retry automatically`,

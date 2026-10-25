@@ -29,6 +29,7 @@ export const ItemSnapshotSchema = z.object({
 	project: ProjectIdentitySchema,
 	issue: IssueIdentitySchema,
 	itemId: z.string().min(1),
+	isArchived: z.boolean(),
 	fields: z.record(z.string(), z.string().nullable()),
 });
 
