@@ -133,7 +133,10 @@ describe("ProjectItemOperations", () => {
 		gateway.applyAdd = false;
 		await assert.rejects(
 			new ProjectItemOperations(gateway).addItem(request),
-			ProjectItemNotFoundError,
+			(error: unknown) =>
+				error instanceof Error &&
+				/submitted.*do not retry automatically/i.test(error.message) &&
+				error.cause instanceof ProjectItemNotFoundError,
 		);
 		assert.strictEqual(gateway.addCalls, 1);
 		assert.strictEqual(gateway.inspectCalls, 2);

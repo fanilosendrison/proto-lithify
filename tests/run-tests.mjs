@@ -7,8 +7,10 @@ const testFiles = [
 	"tests/gh-process-cancellation.test.ts",
 	"tests/gh-process-control.test.ts",
 	"tests/issue-dependency-operations.test.ts",
+	"tests/dependency-concurrency.test.ts",
 	"tests/project-v2-client.test.ts",
 	"tests/project-operations.test.ts",
+	"tests/project-concurrency.test.ts",
 	"tests/cli.test.ts",
 	"tests/installation.test.ts",
 ].map((file) => path.join(repositoryRoot, file));
