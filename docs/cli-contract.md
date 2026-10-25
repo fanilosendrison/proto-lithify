@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.3.2"
+version: "0.3.3"
 ---
 
 # CLI contract
@@ -58,7 +58,9 @@ an intentional breaking CLI change; receipt schema version 1 remains unchanged.
 Version 0.3.1 changes only standalone installation from already immutable
 payloads; the CLI input and receipt contracts remain unchanged. Source version
 0.3.2 adds the identity-safe dependency snapshot contract without changing
-receipt schema version 1 or command arguments.
+receipt schema version 1 or command arguments. Source version 0.3.3 preserves
+those arguments and receipt schema while making local `gh` cancellation
+termination-aware.
 
 ## Failure
 
@@ -66,6 +68,50 @@ Failures use a nonzero exit code and a versioned error receipt. Access denial,
 missing or ambiguous identities, malformed GitHub responses, mutation failure,
 and postcondition mismatch fail closed. Diagnostics redact authorization
 headers, GitHub token forms, bearer values, and credential-bearing URLs.
+
+Error receipts retain schema version 1 and the existing `error.code` and
+`error.message` fields. Existing process codes remain compatible:
+
+- `GH_START_FAILED` means launch failed before the child emitted `spawn`;
+- `GH_COMMAND_FAILED` means a normally closed invocation terminated
+  unsuccessfully;
+- `GH_TIMEOUT` means timeout cancellation ended with confirmed direct-child
+  termination and normal stream closure;
+- `GH_OUTPUT_LIMIT` means output-limit cancellation ended with the same local
+  confirmations.
+
+Two codes represent outcomes that cannot safely use the confirmed codes:
+
+- `GH_TERMINATION_UNCONFIRMED` means the bounded termination deadline expired
+  without a direct-child `exit` or normal `close` confirmation. The local child
+  may still be running;
+- `GH_STREAM_CLOSURE_UNCONFIRMED` means direct-child exit was observed, but
+  normal stdout/stderr closure was not confirmed within the bounded interval.
+
+Cancellation requests `SIGTERM`, waits up to 1,000 milliseconds for direct-child
+exit, requests `SIGKILL` once if needed, and waits another 1,000 milliseconds
+for confirmation. After direct-child exit, normal stream closure receives a
+separate 1,000 millisecond bound. These are Node event-loop deadlines, not hard
+real-time guarantees. Supervision applies only to the directly spawned `gh`
+process, not every possible descendant.
+
+## Remote mutation uncertainty
+
+```text
+LOCAL_PROCESS_TERMINATION != REMOTE_MUTATION_CANCELLATION
+
+MUTATION_ERROR_AFTER_SPAWN => REMOTE_EFFECT_UNDETERMINED
+```
+
+Any error after successful launch of a potentially mutating invocation can leave
+the remote effect applied, absent, or still in flight. This includes
+`GH_COMMAND_FAILED`, both confirmed cancellation codes, both unconfirmed codes,
+successful signal delivery, direct-child exit, and stream closure. None proves
+remote rollback or absence of a GitHub mutation. Proto-Lithify does not
+automatically retry an ambiguous mutation failure. A caller must obtain fresh
+authoritative observations and make a separately qualified retry or idempotence
+decision. A verified pre-spawn failure is the only case in which that invocation
+could not have transmitted a request through the child.
 
 ## Mechanical boundary
 

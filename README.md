@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.3.2"
+version: "0.3.3"
 ---
 
 # Proto-Lithify
@@ -55,7 +55,15 @@ The installed command does not depend on this checkout or invoke pnpm.
 Version 0.3.1 supports installation from an already immutable payload on
 filesystems that prohibit renaming write-disabled directories. Version 0.3.2
 adds canonical blocker identities to dependency receipts while retaining the
-legacy numeric projection.
+legacy numeric projection. Version 0.3.3 adds bounded, termination-aware
+cancellation of the direct `gh` child and explicit errors when termination or
+stream closure cannot be confirmed.
+
+Local child termination never proves remote mutation rollback. Proto-Lithify
+does not automatically retry a potentially mutating invocation after an
+ambiguous post-spawn failure. Direct-child supervision also makes no guarantee
+about descendants. See the CLI contract for the complete cancellation and
+remote-effect boundary.
 
 ## Commands
 

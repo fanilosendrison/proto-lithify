@@ -25,6 +25,17 @@ afterEach(async () => {
 });
 
 describe("runGh", () => {
+	it("preserves stdout and sanitized stderr on normal success", async () => {
+		const directory = await installFakeGh(
+			'process.stdout.write("result"); process.stderr.write("Bearer secret-value");',
+		);
+		const result = await runGh(["api"], {
+			env: { ...process.env, PATH: `${directory}:${process.env.PATH ?? ""}` },
+		});
+		assert.equal(result.stdout, "result");
+		assert.equal(result.stderr, "Bearer [REDACTED]");
+	});
+
 	it("passes literal arguments without a shell", async () => {
 		const directory = await installFakeGh(
 			"process.stdout.write(JSON.stringify(process.argv.slice(2)));",
@@ -46,6 +57,8 @@ describe("runGh", () => {
 			}),
 			(error: unknown) => {
 				assert.ok(error instanceof GhExecutionError);
+				assert.equal(error.code, "GH_COMMAND_FAILED");
+				assert.equal(error.exitCode, 1);
 				assert.doesNotMatch(error.message, /ghp_/);
 				assert.match(error.message, /\[REDACTED\]/);
 				return true;

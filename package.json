@@ -1,6 +1,6 @@
 {
 	"name": "proto-lithify",
-	"version": "0.3.2",
+	"version": "0.3.3",
 	"description": "Verified mechanical GitHub Project operations for coding-agent workflows.",
 	"type": "module",
 	"private": true,
