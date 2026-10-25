@@ -5,7 +5,7 @@ asset_type: "architecture"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify architecture"
-version: "0.3.4"
+version: "0.3.5"
 ---
 
 # Architecture
@@ -50,6 +50,35 @@ Dependency inspection is complete only within the current GitHub.com contract:
 100. Over-limit or contradictory observations fail closed. This boundary does
 not claim global concurrency serialization or completeness for a different
 provider contract.
+
+## Archive-complete membership observation
+
+Project membership includes active and archived items. The Issue projection
+uses explicit archive inclusion and the Project collection uses both archive
+states on every page. Both connections are traversed to completion without an
+arbitrary page ceiling. Cursor absence or repetition, partial GraphQL errors,
+duplicate matches, identity disagreement, or archive-state disagreement fails
+closed; only complete absence in both projections means not found.
+
+The selected membership is an exact `{id,isArchived}` observation. Every page
+of its field-value connection must repeat both values, and field names remain
+unique across the complete traversal. `ItemSnapshotSchema` then validates the
+composite. Archivedness comes only from GitHub's boolean Project-item property,
+not Status, Issue closure, views, dates, or workflow policy.
+
+Operations preserve lifecycle without owning policy. `item.add` treats archived
+membership as present and never adds a duplicate or unarchives it. `field.set`
+permits an archived no-op only for an already matching value and otherwise
+rejects before resolution or mutation. An initially active edit must still be
+observed active afterward. A concurrent archive observed after submission makes
+the postcondition unverified, without retry or rollback. Because GitHub exposes
+no atomic archivedness precondition for the edit mutation, undetected
+intermediate transitions remain possible.
+
+These are sequential, identity-bound observations, not a Project-wide atomic
+snapshot. Archive inclusion increases traversal size linearly with the complete
+Issue, Project, and selected field-value connections; no cache or partial fast
+path weakens absence proof.
 
 ## Concurrency and observation boundary
 
@@ -153,8 +182,10 @@ behavior. Version 0.3.2 adds identity-safe dependency observations without
 adding cross-repository mutation syntax, provider-generic pagination, global
 locking, or command-discriminated receipt envelopes. Version 0.3.3 adds bounded
 direct-child cancellation without remote rollback, process-tree termination,
-automatic retry, or serialization guarantees. Version 0.3.4 binds Project-item
-receipts to validated request and before/after identity without adding atomic
-snapshots, exclusive causality, locking, archived-item behavior, or generalized
-receipt schemas. No version claims multi-command transactions; each command
-exposes and verifies only its own observed postcondition.
+automatic retry, or serialization guarantees. Version 0.3.4 binds Project-item receipts to validated request and before/after
+identity without adding atomic snapshots, exclusive causality, or locking.
+Version 0.3.5 adds archive-complete membership and lifecycle-safe observations
+without implicit unarchive, atomic archivedness preconditions, caching, or the
+command-discriminated receipt schemas owned by Issue #8. No version claims
+multi-command transactions; each command exposes and verifies only its own
+observed postcondition.

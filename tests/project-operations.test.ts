@@ -10,6 +10,7 @@ import type { ItemSnapshot } from "../src/receipts/schemas.ts";
 
 class MutableGateway implements GithubProjectGateway {
 	currentOption = "Backlog";
+	isArchived = false;
 	itemExists = true;
 	applyEdit = true;
 	applyAdd = true;
@@ -35,6 +36,7 @@ class MutableGateway implements GithubProjectGateway {
 				repository: "example/repository",
 			},
 			itemId: "PVTI_item",
+			isArchived: this.isArchived,
 			fields: { Status: this.currentOption },
 		};
 	}

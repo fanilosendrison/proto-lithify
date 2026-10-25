@@ -54,6 +54,9 @@
 			"type": "string",
 			"minLength": 1
 		},
+		"isArchived": {
+			"type": "boolean"
+		},
 		"fields": {
 			"type": "object",
 			"propertyNames": {
@@ -71,6 +74,6 @@
 			}
 		}
 	},
-	"required": ["project", "issue", "itemId", "fields"],
+	"required": ["project", "issue", "itemId", "isArchived", "fields"],
 	"additionalProperties": false
 }

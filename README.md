@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.3.4"
+version: "0.3.5"
 ---
 
 # Proto-Lithify
@@ -59,12 +59,22 @@ legacy numeric projection. Version 0.3.3 adds bounded, termination-aware
 cancellation of the direct `gh` child and explicit errors when termination or
 stream closure cannot be confirmed. Version 0.3.4 binds Project-item mutation
 receipts to the requested target and preserves opaque identity across
-`field.set` observations.
+`field.set` observations. Version 0.3.5 makes Project membership archive-complete
+and exposes GitHub's required boolean `isArchived` on every item snapshot.
+
+Archived Project items remain members: archivedness is not absence and does not
+imply repository workflow completion. `item inspect` reports it, `item add`
+treats active or archived membership as an existing-member no-op, and
+`field set` never implicitly unarchives. An archived item can produce a field
+no-op only when the requested value is already observed; otherwise mutation is
+rejected before option resolution.
 
 A verified receipt reports a validated observation, not global serialization,
-exclusive causality, an atomic GitHub snapshot, or permanent state. The caller
-owns semantic authorization, participating-agent ordering, conflict decisions,
-and retry policy; GitHub remains the durable state owner.
+exclusive causality, an atomic GitHub snapshot, or permanent state. Archive-
+complete membership and field connections are fully paginated, and every
+projection must agree on the exact item ID and GitHub-sourced archive flag. The
+caller owns semantic authorization, participating-agent ordering, conflict
+decisions, and retry policy; GitHub remains the durable state owner.
 
 Local child termination never proves remote mutation rollback. Proto-Lithify
 does not automatically retry a potentially mutating invocation after an
@@ -87,8 +97,12 @@ proto-lithify dependency add-blocker --repo <owner/repository> --issue <number> 
 The former independent `--issue-url` flag is rejected.
 
 Dependency receipts expose canonical identities through `blockedByIssues`. The
-public contract is generated as
-[`dependency-snapshot.schema.json`](schemas/dependency-snapshot.schema.json).
+public contracts are generated as
+[`dependency-snapshot.schema.json`](schemas/dependency-snapshot.schema.json) and
+[`item-snapshot.schema.json`](schemas/item-snapshot.schema.json). New item
+snapshots require `isArchived`; historical item snapshots lacking it do not
+validate against the strict 0.3.5 snapshot schema, while generic receipt
+envelopes remain at `schemaVersion=1`.
 
 See [the CLI contract](docs/cli-contract.md) and
 [the architecture](docs/architecture.md) for authority and output guarantees.

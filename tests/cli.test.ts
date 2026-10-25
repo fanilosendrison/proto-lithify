@@ -34,7 +34,7 @@ if (args[0] === "--version") {
 			process.stdout.write(JSON.stringify({ data: { repository: { issue: {
 				id: "I_target",
 				projectItems: {
-					nodes: [{ id: "PVTI_orphan", project: {
+					nodes: [{ id: "PVTI_orphan", isArchived: true, project: {
 						id: "PVT_project",
 						number: 3,
 						title: "Engineering",

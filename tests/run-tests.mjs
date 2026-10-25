@@ -9,8 +9,12 @@ const testFiles = [
 	"tests/issue-dependency-operations.test.ts",
 	"tests/dependency-concurrency.test.ts",
 	"tests/project-v2-client.test.ts",
+	"tests/project-archive-membership.test.ts",
+	"tests/project-archive-pagination.test.ts",
+	"tests/project-archive-operations.test.ts",
 	"tests/project-operations.test.ts",
 	"tests/project-concurrency.test.ts",
+	"tests/item-snapshot-schema.test.ts",
 	"tests/cli.test.ts",
 	"tests/installation.test.ts",
 ].map((file) => path.join(repositoryRoot, file));

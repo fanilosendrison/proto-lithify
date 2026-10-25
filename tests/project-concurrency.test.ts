@@ -42,6 +42,7 @@ function snapshot(
 			repository: overrides.repository ?? "example/repository",
 		},
 		itemId: overrides.itemId ?? "PVTI_X",
+		isArchived: false,
 		fields: { Status: status, Priority: overrides.priority ?? "P1" },
 	};
 }
@@ -204,7 +205,6 @@ describe("Project item concurrency proof boundaries", () => {
 		assert.deepEqual(state.edits, ["Ready", "In Progress"]);
 		assert.equal(a.editTargets.length, 1);
 	});
-
 	it("C03 permits two barrier-synchronized same-value writes", async () => {
 		const state = new SharedFieldState();
 		const barrier = new Barrier(2);
