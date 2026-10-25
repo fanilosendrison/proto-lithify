@@ -4,6 +4,8 @@ import path from "node:path";
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
 const testFiles = [
 	"tests/gh-process.test.ts",
+	"tests/gh-process-cancellation.test.ts",
+	"tests/gh-process-control.test.ts",
 	"tests/issue-dependency-operations.test.ts",
 	"tests/project-v2-client.test.ts",
 	"tests/project-operations.test.ts",
