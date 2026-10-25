@@ -1,0 +1,40 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"properties": {
+		"blockedBy": {
+			"type": "array",
+			"items": {
+				"type": "integer",
+				"exclusiveMinimum": 0,
+				"maximum": 9007199254740991
+			}
+		},
+		"blockedByIssues": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "integer",
+						"exclusiveMinimum": 0,
+						"maximum": 9007199254740991
+					},
+					"repository": {
+						"type": "string",
+						"pattern": "^[^/]+\\/[^/]+$"
+					},
+					"number": {
+						"type": "integer",
+						"exclusiveMinimum": 0,
+						"maximum": 9007199254740991
+					}
+				},
+				"required": ["id", "repository", "number"],
+				"additionalProperties": false
+			}
+		}
+	},
+	"required": ["blockedBy", "blockedByIssues"],
+	"additionalProperties": false
+}
