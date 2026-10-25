@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.3.1"
+version: "0.3.2"
 ---
 
 # Proto-Lithify
@@ -53,7 +53,9 @@ The installer deploys an immutable content-addressed release below
 
 The installed command does not depend on this checkout or invoke pnpm.
 Version 0.3.1 supports installation from an already immutable payload on
-filesystems that prohibit renaming write-disabled directories.
+filesystems that prohibit renaming write-disabled directories. Version 0.3.2
+adds canonical blocker identities to dependency receipts while retaining the
+legacy numeric projection.
 
 ## Commands
 
@@ -68,6 +70,10 @@ proto-lithify dependency add-blocker --repo <owner/repository> --issue <number> 
 
 `item add` derives the GitHub Issue URL exclusively from `--repo` and `--issue`.
 The former independent `--issue-url` flag is rejected.
+
+Dependency receipts expose canonical identities through `blockedByIssues`. The
+public contract is generated as
+[`dependency-snapshot.schema.json`](schemas/dependency-snapshot.schema.json).
 
 See [the CLI contract](docs/cli-contract.md) and
 [the architecture](docs/architecture.md) for authority and output guarantees.

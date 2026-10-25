@@ -14,6 +14,17 @@ export const IssueIdentitySchema = z.object({
 	repository: z.string().regex(/^[^/]+\/[^/]+$/),
 });
 
+export const DependencyBlockerSchema = z.object({
+	id: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+	repository: z.string().regex(/^[^/]+\/[^/]+$/),
+	number: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+});
+
+export const DependencySnapshotSchema = z.object({
+	blockedBy: z.array(z.number().int().positive().max(Number.MAX_SAFE_INTEGER)),
+	blockedByIssues: z.array(DependencyBlockerSchema),
+});
+
 export const ItemSnapshotSchema = z.object({
 	project: ProjectIdentitySchema,
 	issue: IssueIdentitySchema,
@@ -64,6 +75,8 @@ export const ErrorReceiptSchema = z.object({
 
 export type ProjectIdentity = z.infer<typeof ProjectIdentitySchema>;
 export type IssueIdentity = z.infer<typeof IssueIdentitySchema>;
+export type DependencyBlocker = z.infer<typeof DependencyBlockerSchema>;
+export type DependencySnapshot = z.infer<typeof DependencySnapshotSchema>;
 export type ItemSnapshot = z.infer<typeof ItemSnapshotSchema>;
 export type ProjectSnapshot = z.infer<typeof ProjectSnapshotSchema>;
 export type ReceiptOutcome = "inspected" | "applied" | "noop";

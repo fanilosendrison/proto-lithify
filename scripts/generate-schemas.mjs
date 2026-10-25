@@ -3,6 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import {
 	CommandReceiptSchema,
+	DependencySnapshotSchema,
 	ErrorReceiptSchema,
 	ItemSnapshotSchema,
 	ProjectSnapshotSchema,
@@ -14,6 +15,7 @@ await mkdir(schemaDirectory, { recursive: true });
 
 const schemas = new Map([
 	["command-receipt.schema.json", CommandReceiptSchema],
+	["dependency-snapshot.schema.json", DependencySnapshotSchema],
 	["error-receipt.schema.json", ErrorReceiptSchema],
 	["item-snapshot.schema.json", ItemSnapshotSchema],
 	["project-snapshot.schema.json", ProjectSnapshotSchema],

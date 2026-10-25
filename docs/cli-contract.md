@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.3.1"
+version: "0.3.2"
 ---
 
 # CLI contract
@@ -31,13 +31,34 @@ to stderr. Receipt schema version 1 distinguishes `inspected`, `applied`, and
 postcondition. Project membership is established only when the Issue projection
 and the Project's own item collection contain the same unique item identity.
 
+`dependency.add-blocker` resolves the requested blocker to its exact GitHub Issue
+database ID, canonical lower-case repository, and repository-scoped Issue
+number before evaluating idempotence. Dependency snapshots contain:
+
+- `blockedByIssues`, the authoritative identity collection;
+- `blockedBy`, a deprecated, potentially lossy compatibility projection of
+  unique positive Issue numbers sorted ascending.
+
+Equal Issue numbers from different repositories do not establish the same
+relationship. A verified `noop` or `applied` outcome requires the exact canonical
+ID, repository, and Issue number in a complete validated observation.
+`blockedByIssues` is ordered by repository, Issue number, and database ID.
+
+Snapshot observations prove only the command's fresh observed postcondition;
+they do not establish global serialization against concurrent actors.
+GitHub.com completeness currently relies on the published limit of 50
+dependencies per relationship type and a list request capacity of 100. An
+over-limit response fails closed rather than triggering speculative pagination.
+
 Published JSON Schemas are generated under `schemas/` from the runtime Zod
-contracts.
+contracts, including `dependency-snapshot.schema.json`.
 
 Version 0.3.0 removes the `--issue-url` input accepted by version 0.2.1. This is
 an intentional breaking CLI change; receipt schema version 1 remains unchanged.
 Version 0.3.1 changes only standalone installation from already immutable
-payloads; the CLI input and receipt contracts remain unchanged.
+payloads; the CLI input and receipt contracts remain unchanged. Source version
+0.3.2 adds the identity-safe dependency snapshot contract without changing
+receipt schema version 1 or command arguments.
 
 ## Failure
 
