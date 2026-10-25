@@ -68,20 +68,26 @@ describe("ProjectV2Client", () => {
 		const executor = new QueuedExecutor([
 			project,
 			issueProjectItemPage([], true, "issue-cursor"),
-			issueProjectItemPage([{ id: "PVTI_item", project: { ...project } }], false, null),
+			issueProjectItemPage(
+				[{ id: "PVTI_item", isArchived: false, project: { ...project } }],
+				false,
+				null,
+			),
 			projectCollectionPage(
-				[{ id: "PVTI_other", content: { id: "I_other" } }],
+				[{ id: "PVTI_other", isArchived: true, content: { id: "I_other" } }],
 				true,
 				"project-cursor",
 			),
 			projectCollectionPage(
-				[{ id: "PVTI_item", content: { id: "I_target" } }],
+				[{ id: "PVTI_item", isArchived: false, content: { id: "I_target" } }],
 				false,
 				null,
 			),
 			{
 				data: {
 					node: {
+						id: "PVTI_item",
+						isArchived: false,
 						fieldValues: {
 							nodes: [{ __typename: "ProjectV2ItemFieldRepositoryValue" }],
 							pageInfo: { hasNextPage: false, endCursor: null },
@@ -99,6 +105,7 @@ describe("ProjectV2Client", () => {
 		});
 
 		assert.strictEqual(snapshot.itemId, "PVTI_item");
+		assert.strictEqual(snapshot.isArchived, false);
 		assert.strictEqual(executor.calls.length, 6);
 		assert.ok(
 			executor.calls[2]?.some((argument) => argument === "cursor=issue-cursor"),
@@ -113,7 +120,7 @@ describe("ProjectV2Client", () => {
 		const executor = new QueuedExecutor([
 			project,
 			issueProjectItemPage(
-				[{ id: "PVTI_orphan", project: { ...project } }],
+				[{ id: "PVTI_orphan", isArchived: true, project: { ...project } }],
 				false,
 				null,
 			),
@@ -138,7 +145,7 @@ describe("ProjectV2Client", () => {
 			project,
 			issueProjectItemPage([], false, null),
 			projectCollectionPage(
-				[{ id: "PVTI_orphan", content: { id: "I_target" } }],
+				[{ id: "PVTI_orphan", isArchived: true, content: { id: "I_target" } }],
 				false,
 				null,
 			),
@@ -161,12 +168,12 @@ describe("ProjectV2Client", () => {
 		const executor = new QueuedExecutor([
 			project,
 			issueProjectItemPage(
-				[{ id: "PVTI_issue", project: { ...project } }],
+				[{ id: "PVTI_issue", isArchived: false, project: { ...project } }],
 				false,
 				null,
 			),
 			projectCollectionPage(
-				[{ id: "PVTI_project", content: { id: "I_target" } }],
+				[{ id: "PVTI_project", isArchived: false, content: { id: "I_target" } }],
 				false,
 				null,
 			),
