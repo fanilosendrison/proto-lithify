@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.3.4"
+version: "0.3.5"
 ---
 
 # CLI contract
@@ -60,7 +60,46 @@ receipt schema version 1 or command arguments. Source version 0.3.3 preserves
 those arguments and receipt schema while making local `gh` cancellation
 termination-aware. Source version 0.3.4 preserves the same public inputs and
 receipt shape while binding Project-item mutation evidence to validated target
-identity.
+identity. Source version 0.3.5 preserves those inputs and the generic version-1
+envelope while adding required GitHub-sourced archivedness to every item
+snapshot.
+
+## Archive-complete item snapshots
+
+An archived Project item remains membership. Archivedness is neither absence nor
+a repository workflow status. Every `ItemSnapshot` contains the required,
+noncoerced `isArchived` boolean returned by GitHub; it is never inferred from a
+Status field, Issue closure, dates, views, or policy.
+
+Issue-side membership explicitly requests `includeArchived:true`. Project-side
+membership explicitly requests `archivedStates:[ARCHIVED,NOT_ARCHIVED]`. Both
+connections are traversed completely with the same filters on every page. The
+projections must each contain exactly one matching item and agree on its exact
+ID and archive flag. Every completely paginated field-value response must repeat
+that same ID and archive flag. Missing, duplicated, partial, contradictory, or
+nonboolean evidence fails closed. These sequential reads establish internally
+consistent observations, not an atomic global snapshot.
+
+`item.inspect` reports active or archived membership. `item.add` treats either as
+an existing-membership `noop`, submits no add, and never unarchives. After an
+actual add, a fresh valid observation may be archived if another actor archived
+the item; membership still satisfies the add predicate without proving exclusive
+creation or archiving.
+
+`field.set` on an initially archived item is a one-read `noop` only when the
+requested value already matches. A differing value is rejected before option
+resolution or mutation, with no unarchive or recreation. For an initially active
+item, a verified `applied` receipt requires the fresh observation to remain
+active. Observed concurrent archiving rejects success after submission without
+rollback or automatic retry. GitHub's current mutation input has no atomic
+archivedness precondition, so an intermediate transition can escape observation.
+
+The required nested field is an additive JSON payload evolution and a strict
+snapshot-validation change. Historical `ItemSnapshot` JSON without
+`isArchived` does not validate against the 0.3.5 `ItemSnapshotSchema`. Existing
+generic version-1 receipt envelopes remain structurally compatible because
+`before` and `after` are still generic at that boundary. Command-discriminated
+receipt validation remains Issue #8 scope.
 
 ## Observation-backed mutation semantics
 
