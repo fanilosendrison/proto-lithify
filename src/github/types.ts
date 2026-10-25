@@ -9,4 +9,7 @@ export interface GhRunOptions {
 	readonly env?: NodeJS.ProcessEnv;
 	readonly timeoutMilliseconds?: number;
 	readonly maximumOutputBytes?: number;
+	readonly terminationGraceMilliseconds?: number;
+	readonly killConfirmationMilliseconds?: number;
+	readonly streamClosureMilliseconds?: number;
 }
