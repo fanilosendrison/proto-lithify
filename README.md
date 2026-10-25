@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.3.3"
+version: "0.3.4"
 ---
 
 # Proto-Lithify
@@ -57,7 +57,14 @@ filesystems that prohibit renaming write-disabled directories. Version 0.3.2
 adds canonical blocker identities to dependency receipts while retaining the
 legacy numeric projection. Version 0.3.3 adds bounded, termination-aware
 cancellation of the direct `gh` child and explicit errors when termination or
-stream closure cannot be confirmed.
+stream closure cannot be confirmed. Version 0.3.4 binds Project-item mutation
+receipts to the requested target and preserves opaque identity across
+`field.set` observations.
+
+A verified receipt reports a validated observation, not global serialization,
+exclusive causality, an atomic GitHub snapshot, or permanent state. The caller
+owns semantic authorization, participating-agent ordering, conflict decisions,
+and retry policy; GitHub remains the durable state owner.
 
 Local child termination never proves remote mutation rollback. Proto-Lithify
 does not automatically retry a potentially mutating invocation after an

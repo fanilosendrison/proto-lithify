@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.3.3"
+version: "0.3.4"
 ---
 
 # CLI contract
@@ -44,8 +44,6 @@ relationship. A verified `noop` or `applied` outcome requires the exact canonica
 ID, repository, and Issue number in a complete validated observation.
 `blockedByIssues` is ordered by repository, Issue number, and database ID.
 
-Snapshot observations prove only the command's fresh observed postcondition;
-they do not establish global serialization against concurrent actors.
 GitHub.com completeness currently relies on the published limit of 50
 dependencies per relationship type and a list request capacity of 100. An
 over-limit response fails closed rather than triggering speculative pagination.
@@ -60,7 +58,57 @@ payloads; the CLI input and receipt contracts remain unchanged. Source version
 0.3.2 adds the identity-safe dependency snapshot contract without changing
 receipt schema version 1 or command arguments. Source version 0.3.3 preserves
 those arguments and receipt schema while making local `gh` cancellation
-termination-aware.
+termination-aware. Source version 0.3.4 preserves the same public inputs and
+receipt shape while binding Project-item mutation evidence to validated target
+identity.
+
+## Observation-backed mutation semantics
+
+`postcondition.verified=true` means only that observations obtained and
+validated during this invocation satisfy the command's specified predicate for
+the target identity established by those observations. It does not prove an
+atomic GitHub snapshot, semantic authorization, global serialization, exclusive
+write causality, absence of another actor, permanence, or future invariance.
+
+`outcome=noop` means no requested mutation was submitted because one validated
+initial observation already satisfied the predicate. The same observation is
+reported as both `before` and `after`; no second read is implied:
+
+- `field.set` observed the requested option on the exact inspected Project item;
+- `item.add` observed the exact Issue already represented by the requested
+  Project membership;
+- `dependency.add-blocker` observed the exact canonical blocker identity.
+
+`outcome=applied` means the explicit mutation was submitted, its provider
+invocation returned without execution error, and a subsequent validated
+observation satisfied the requested predicate for the intended identity. It
+does not attribute the result exclusively to this invocation. Independent
+callers may each receive `applied` after writing or adding the same value or
+relationship.
+
+For `field.set`, the initial and subsequent snapshots must match the request's
+Project owner/number and Issue repository/number. The opaque Project, Issue, and
+Project-item IDs must remain byte-for-byte identical across the two snapshots;
+owner and repository names use validated case-insensitive GitHub identity.
+Unrelated mutable field values may change. `item.add` applies the same request
+binding to an existing membership or fresh post-add membership.
+`dependency.add-blocker` continues to use the exact canonical
+`{id,repository,number}` identity in `blockedByIssues`.
+
+If a mutation may have been submitted but fresh inspection fails, changes target
+identity, or does not satisfy the requested predicate, no affirmative receipt is
+emitted. The remote effect can still have occurred or remain in flight, and no
+automatic retry or rollback claim is made.
+
+```text
+OBSERVED_POSTCONDITION != GLOBAL_SERIALIZATION
+
+OBSERVED_VALUE != EXCLUSIVE_WRITE_CAUSALITY
+
+FRESH_READS != ATOMIC_GLOBAL_SNAPSHOT
+
+SUCCESSFUL_RECEIPT != PERMANENT_STATE
+```
 
 ## Failure
 

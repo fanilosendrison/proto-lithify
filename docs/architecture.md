@@ -5,7 +5,7 @@ asset_type: "architecture"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify architecture"
-version: "0.3.3"
+version: "0.3.4"
 ---
 
 # Architecture
@@ -50,6 +50,46 @@ Dependency inspection is complete only within the current GitHub.com contract:
 100. Over-limit or contradictory observations fail closed. This boundary does
 not claim global concurrency serialization or completeness for a different
 provider contract.
+
+## Concurrency and observation boundary
+
+Project-item operations validate every affirmative snapshot against the explicit
+request. `field.set` additionally requires exact continuity of opaque Project,
+Issue, and item IDs across its initial and post-mutation observations; validated
+owner and repository names compare case-insensitively. Mutable titles, views,
+and unrelated fields are not identity and may change concurrently.
+
+`ProjectV2Client.inspectItem()` is a composite of multiple GraphQL requests.
+Bidirectional membership agreement and schema validation establish consistency
+of the identities and values that were fetched; they do not create one globally
+simultaneous GitHub snapshot or a transaction-wide linearization point. The
+currently documented `updateProjectV2ItemFieldValue` input has no expected-old-
+value or revision precondition. `clientMutationId` is not a compare-and-set
+token, so another read cannot eliminate the race immediately following it.
+
+The responsibility boundary is:
+
+- Proto-Lithify submits an explicit mutation and produces truthful,
+  identity-bound observational evidence;
+- the caller or orchestrator owns semantic authorization, participating-agent
+  ordering, stale-intent arbitration, conflict decisions, and retry policy;
+- GitHub owns durable state and only the atomicity and idempotence its APIs
+  actually provide.
+
+No local mutex, distributed lock, retry loop, synthetic revision, scheduler, or
+cross-command transaction is introduced. A later mutation can change a state
+that an earlier receipt truthfully observed, and concurrent identical writes do
+not establish which caller exclusively caused the result.
+
+```text
+OBSERVED_POSTCONDITION != GLOBAL_SERIALIZATION
+
+OBSERVED_VALUE != EXCLUSIVE_WRITE_CAUSALITY
+
+FRESH_READS != ATOMIC_GLOBAL_SNAPSHOT
+
+SUCCESSFUL_RECEIPT != PERMANENT_STATE
+```
 
 ## Local process cancellation
 
@@ -113,5 +153,8 @@ behavior. Version 0.3.2 adds identity-safe dependency observations without
 adding cross-repository mutation syntax, provider-generic pagination, global
 locking, or command-discriminated receipt envelopes. Version 0.3.3 adds bounded
 direct-child cancellation without remote rollback, process-tree termination,
-automatic retry, or serialization guarantees. No version claims multi-command
-transactions; each command exposes and verifies only its own effect.
+automatic retry, or serialization guarantees. Version 0.3.4 binds Project-item
+receipts to validated request and before/after identity without adding atomic
+snapshots, exclusive causality, locking, archived-item behavior, or generalized
+receipt schemas. No version claims multi-command transactions; each command
+exposes and verifies only its own observed postcondition.
