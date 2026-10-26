@@ -237,9 +237,12 @@ published release may remain available.
 Activation uses a task-owned temporary symlink and atomic rename for the single
 `current` selector. A rename failure removes that temporary link and preserves
 the prior selector. When the invocation created a previously absent launcher,
-cleanup removes it only after revalidating its exact symlink identity. A
-concurrent identity change fails closed rather than deleting another actor's
-object. This is bounded single-invocation failure preservation, not an atomic
+cleanup removes it only after revalidating its exact filesystem identity and
+managed target from a task-owned quarantine path. If the identity changed, the
+observed object remains preserved under that quarantine name and an equivalent
+symlink is recreated at the public path only if the path is still absent. This
+fails closed rather than deleting another actor's object. It is bounded
+single-invocation failure preservation, not an atomic
 transaction over the selector and launcher, crash-proof multi-object commit, or
 serialization against external writers.
 

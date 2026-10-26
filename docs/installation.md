@@ -26,9 +26,12 @@ can remain available without being selected.
 Activation creates a task-owned temporary selector and atomically renames that
 single symlink to `current`. If the rename fails, the temporary selector is
 removed and the prior `current` target is preserved. If this invocation created
-the stable launcher, failure cleanup removes it only while its exact managed
-symlink identity is unchanged. An intervening identity change fails closed.
-These guarantees do not form an atomic transaction over two symlinks, provide
+the stable launcher, failure cleanup first moves the observed object to a
+random task-owned quarantine path and removes it only when both filesystem
+identity and managed target match. An intervening replacement is preserved in
+quarantine; an equivalent public symlink is recreated only if that path remains
+absent, and the installation still fails. These guarantees do not form an
+atomic transaction over two symlinks, provide
 crash-proof multi-object publication, or serialize uncoordinated writers.
 
 Old releases are preserved. Rollback consists of atomically selecting a
