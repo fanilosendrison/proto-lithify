@@ -105,12 +105,18 @@ async function noStaging(value: Fixture): Promise<void> {
 	);
 }
 
-function activationFailureOperations(error: Error): InstallStandaloneFileOperations {
+function activationFailureOperations(
+	error: Error,
+	beforeFailure?: () => Promise<void>,
+): InstallStandaloneFileOperations {
 	return {
 		rename: async (source, destination) => await rename(source, destination),
 		remove: async (target) => await rm(target, { recursive: true, force: true }),
-		activationRename: async () => await Promise.reject(error),
-	} as InstallStandaloneFileOperations;
+		activationRename: async () => {
+			await beforeFailure?.();
+			throw error;
+		},
+	};
 }
 
 describe("standalone activation failure preservation", () => {
@@ -214,5 +220,49 @@ describe("standalone activation failure preservation", () => {
 		);
 		assert.equal(await readlink(installedA.currentLink), selectorBefore);
 		await assert.rejects(lstat(installedA.executableLink), /ENOENT/);
+	});
+
+	it("R3.E preserves a same-target launcher replacement instead of deleting it", async () => {
+		const value = await fixture();
+		const installedA = await installA(value);
+		const selectorBefore = await readlink(installedA.currentLink);
+		await rm(installedA.executableLink);
+		let replacementIdentity: { readonly dev: number; readonly ino: number } | undefined;
+		const replaceLauncher = async (): Promise<void> => {
+			const target = await readlink(installedA.executableLink);
+			await rm(installedA.executableLink);
+			await symlink(target, installedA.executableLink);
+			const stats = await lstat(installedA.executableLink);
+			replacementIdentity = { dev: stats.dev, ino: stats.ino };
+		};
+		await assert.rejects(
+			installStandalone(
+				requestB(value),
+				activationFailureOperations(
+					new Error("simulated activation rename failure"),
+					replaceLauncher,
+				),
+			),
+			(error: unknown) =>
+				error instanceof AggregateError &&
+				error.errors.some(
+					(cause: unknown) =>
+						cause instanceof Error && /changed identity/.test(cause.message),
+				),
+		);
+		assert.equal(await readlink(installedA.currentLink), selectorBefore);
+		assert.equal(
+			await readlink(installedA.executableLink),
+			path.relative(
+				value.binHome,
+				path.join(installedA.currentLink, "bin", "proto-lithify.mjs"),
+			),
+		);
+		const quarantines = (await readdir(value.binHome)).filter((name) =>
+			name.startsWith("proto-lithify.cleanup-"),
+		);
+		assert.equal(quarantines.length, 1);
+		const preserved = await lstat(path.join(value.binHome, quarantines[0] ?? ""));
+		assert.deepEqual({ dev: preserved.dev, ino: preserved.ino }, replacementIdentity);
 	});
 });
