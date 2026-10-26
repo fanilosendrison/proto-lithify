@@ -277,11 +277,7 @@ async function activateCurrent(
 		`.current-${randomBytes(16).toString("hex")}`,
 	);
 	await symlink(path.join("releases", releaseName), temporaryLink);
-	try {
-		await activationRename(temporaryLink, currentLink);
-	} finally {
-		await rm(temporaryLink, { force: true });
-	}
+	await activationRename(temporaryLink, currentLink);
 }
 
 async function ensureStableExecutable(

@@ -107,14 +107,14 @@ async function noStaging(value: Fixture): Promise<void> {
 
 function activationFailureOperations(
 	error: Error,
-	beforeFailure?: () => Promise<void>,
+	beforeFailure?: (temporarySelector: string) => Promise<void>,
 	cleanupAfterIdentityRead?: (quarantine: string) => Promise<void>,
 ): InstallStandaloneFileOperations {
 	return {
 		rename: async (source, destination) => await rename(source, destination),
 		remove: async (target) => await rm(target, { recursive: true, force: true }),
-		activationRename: async () => {
-			await beforeFailure?.();
+		activationRename: async (temporarySelector) => {
+			await beforeFailure?.(temporarySelector);
 			throw error;
 		},
 		...(cleanupAfterIdentityRead === undefined ? {} : { cleanupAfterIdentityRead }),
@@ -189,7 +189,7 @@ describe("standalone activation failure preservation", () => {
 		}
 	});
 
-	it("R3.C preserves current, managed launcher, releases, and cleans temporary link on activation rename failure", async () => {
+	it("R3.C preserves current and quarantines the temporary selector on activation failure", async () => {
 		const value = await fixture();
 		const installedA = await installA(value);
 		const selectorBefore = await readlink(installedA.currentLink);
@@ -201,11 +201,16 @@ describe("standalone activation failure preservation", () => {
 		);
 		assert.equal(await readlink(installedA.currentLink), selectorBefore);
 		assert.equal(await readlink(installedA.executableLink), launcherBefore);
-		assert.deepEqual(
-			(await readdir(path.join(value.dataHome, "proto-lithify"))).filter((name) =>
-				name.startsWith(".current-"),
+		const temporarySelectors = (
+			await readdir(path.join(value.dataHome, "proto-lithify"))
+		).filter((name) => name.startsWith(".current-"));
+		assert.equal(temporarySelectors.length, 1);
+		const digestB = await computeTreeDigest(value.payloadB);
+		assert.equal(
+			await readlink(
+				path.join(value.dataHome, "proto-lithify", temporarySelectors[0] ?? ""),
 			),
-			[],
+			path.join("releases", `0.4.2-${digestB}`),
 		);
 		await noStaging(value);
 	});
@@ -300,6 +305,42 @@ describe("standalone activation failure preservation", () => {
 		);
 		assert.notEqual(quarantine, undefined);
 		const preserved = await lstat(path.join(value.binHome, quarantine ?? ""));
+		assert.deepEqual({ dev: preserved.dev, ino: preserved.ino }, replacementIdentity);
+	});
+
+	it("R3.G never deletes a replacement temporary selector after activation failure", async () => {
+		const value = await fixture();
+		const installedA = await installA(value);
+		const selectorBefore = await readlink(installedA.currentLink);
+		const failure = new Error("simulated activation rename failure");
+		let replacementIdentity: { readonly dev: number; readonly ino: number } | undefined;
+		const replaceTemporarySelector = async (
+			temporarySelector: string,
+		): Promise<void> => {
+			await rm(temporarySelector);
+			await symlink("foreign-selector-target", temporarySelector);
+			const stats = await lstat(temporarySelector);
+			replacementIdentity = { dev: stats.dev, ino: stats.ino };
+		};
+		await assert.rejects(
+			installStandalone(
+				requestB(value),
+				activationFailureOperations(failure, replaceTemporarySelector),
+			),
+			(error: unknown) => error === failure,
+		);
+		assert.equal(await readlink(installedA.currentLink), selectorBefore);
+		const temporarySelector = (
+			await readdir(path.join(value.dataHome, "proto-lithify"))
+		).find((name) => name.startsWith(".current-"));
+		assert.notEqual(temporarySelector, undefined);
+		const preservedPath = path.join(
+			value.dataHome,
+			"proto-lithify",
+			temporarySelector ?? "",
+		);
+		assert.equal(await readlink(preservedPath), "foreign-selector-target");
+		const preserved = await lstat(preservedPath);
 		assert.deepEqual({ dev: preserved.dev, ino: preserved.ino }, replacementIdentity);
 	});
 });
