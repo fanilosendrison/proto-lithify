@@ -56,9 +56,10 @@ switching `current`, the installer verifies that any existing public launcher
 is the managed symlink. A rejected launcher leaves the prior selector and the
 unowned launcher unchanged. Activation-rename failure preserves the prior
 selector and moves an invocation-created launcher out of the public path into a
-task-owned quarantine without deleting it during recovery. These bounded
-single-invocation guarantees are not an atomic
-transaction across both symlinks or protection from uncoordinated writers.
+task-owned quarantine without deleting it during recovery. A failed selector
+rename may likewise retain its random temporary name as an inactive quarantine.
+These bounded single-invocation guarantees are not an atomic transaction across
+both symlinks or protection from uncoordinated writers.
 
 Version 0.3.1 supports installation from an already immutable payload on
 filesystems that prohibit renaming write-disabled directories. Version 0.3.2

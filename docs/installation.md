@@ -24,8 +24,10 @@ verifying the new immutable release may already have completed, so that release
 can remain available without being selected.
 
 Activation creates a task-owned temporary selector and atomically renames that
-single symlink to `current`. If the rename fails, the temporary selector is
-removed and the prior `current` target is preserved. If this invocation created
+single symlink to `current`. Successful rename consumes the temporary name. If
+rename fails, the prior `current` target is preserved and the random temporary
+name remains as an inactive quarantine; recovery never deletes it because its
+object may have been replaced concurrently. If this invocation created
 the stable launcher, failure cleanup moves the observed object to a random
 task-owned quarantine path and does not delete that quarantined object during
 recovery. An intervening replacement therefore remains preserved; an equivalent

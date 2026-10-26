@@ -235,8 +235,10 @@ the previous selector and never overwrites the unowned object; a verified newly
 published release may remain available.
 
 Activation uses a task-owned temporary symlink and atomic rename for the single
-`current` selector. A rename failure removes that temporary link and preserves
-the prior selector. When the invocation created a previously absent launcher,
+`current` selector. Successful rename consumes that temporary name. On failure,
+the prior selector remains active and the random temporary name is retained as
+an inactive quarantine; recovery does not delete it because another writer may
+have replaced its object. When the invocation created a previously absent launcher,
 cleanup atomically moves the observed public path to a random task-owned
 quarantine name. Recovery never deletes that quarantined object, including when
 its identity changes after observation. If the moved identity differs, an
