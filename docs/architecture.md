@@ -5,7 +5,7 @@ asset_type: "architecture"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify architecture"
-version: "0.3.5"
+version: "0.4.0"
 ---
 
 # Architecture
@@ -120,6 +120,36 @@ FRESH_READS != ATOMIC_GLOBAL_SNAPSHOT
 SUCCESSFUL_RECEIPT != PERMANENT_STATE
 ```
 
+## Versioned receipt boundary
+
+The source 0.4.0 output boundary accepts only the nine strict version 2 success
+branches defined by command and outcome. Each candidate is validated as a whole
+before any stdout byte is written. A validation failure emits one bounded,
+sanitized version 2 error with `RECEIPT_VALIDATION_FAILED`; it does not emit a
+partial success, repeat a mutation, or claim rollback. If a mutation was already
+submitted, its remote effect remains undetermined.
+
+Fixed receipt, target, request, postcondition, snapshot, and nested identity
+objects reject unknown properties. The item field map is intentionally open.
+The optional Project URL is constrained to canonical GitHub.com user or
+organization Project URLs by one runtime/schema pattern. Runtime Zod contracts
+generate the Draft 2020-12 assets directly, and an
+independent Ajv corpus checks acceptance parity. Dynamic relations such as a
+derived Issue URL matching its target and a field value matching its request
+remain operation-level invariants rather than unsupported JSON Schema claims.
+
+The producer emits only schema version 2 for success and error receipts. The
+preserved version 1 schemas model the historical weak input envelope and do not
+reuse current snapshot requirements. Versioned readers accept an explicitly
+versioned v1 or v2 receipt without upgrading historical data. Canonical schema
+filenames represent the current producer; `*-v1` and `versioned-*` assets expose
+the two reader boundaries.
+
+Structural receipt validation does not prove GitHub accepted a mutation, unique
+causality, absence of concurrent interference, an atomic global snapshot,
+permanent postconditions, remote non-application, or rollback. Existing
+operation-level fresh-read and identity checks remain the evidence owners.
+
 ## Local process cancellation
 
 The GitHub process runner supervises only the direct `gh` child created with
@@ -166,8 +196,9 @@ serialize against in-flight remote work.
 - `src/project-items/` owns exact item and field mutation orchestration.
 - `src/issue-relations/` owns explicit blocked-by relationships, strict REST
   Issue identity parsing, and bounded complete dependency observations.
-- `src/receipts/` owns public output schemas, including the authoritative
-  dependency identity collection and its compatibility projection.
+- `src/receipts/` owns strict producer, historical reader, versioned reader,
+  snapshot, and final output-validation contracts. Snapshot schemas remain the
+  single authorities reused by command-specific receipts.
 - `src/installation/` owns immutable standalone installation. It keeps
   task-owned staging directories writable through atomic publication, then
   verifies content and immutable permissions before activation. This supports
@@ -185,7 +216,8 @@ direct-child cancellation without remote rollback, process-tree termination,
 automatic retry, or serialization guarantees. Version 0.3.4 binds Project-item receipts to validated request and before/after
 identity without adding atomic snapshots, exclusive causality, or locking.
 Version 0.3.5 adds archive-complete membership and lifecycle-safe observations
-without implicit unarchive, atomic archivedness preconditions, caching, or the
-command-discriminated receipt schemas owned by Issue #8. No version claims
-multi-command transactions; each command exposes and verifies only its own
-observed postcondition.
+without implicit unarchive, atomic archivedness preconditions, or caching.
+Version 0.4.0 adds strict command-discriminated version 2 success and error
+contracts without changing GitHub operations, adding retries, or rewriting
+historical version 1 evidence. No version claims multi-command transactions;
+each command exposes and verifies only its own observed postcondition.
