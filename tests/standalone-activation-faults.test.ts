@@ -243,10 +243,11 @@ describe("standalone activation failure preservation", () => {
 		let replacementIdentity: { readonly dev: number; readonly ino: number } | undefined;
 		const replaceLauncher = async (): Promise<void> => {
 			const target = await readlink(installedA.executableLink);
-			await rm(installedA.executableLink);
-			await symlink(target, installedA.executableLink);
-			const stats = await lstat(installedA.executableLink);
+			const replacement = path.join(value.binHome, "replacement-launcher");
+			await symlink(target, replacement);
+			const stats = await lstat(replacement);
 			replacementIdentity = { dev: stats.dev, ino: stats.ino };
+			await rename(replacement, installedA.executableLink);
 		};
 		await assert.rejects(
 			installStandalone(
