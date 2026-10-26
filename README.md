@@ -55,8 +55,9 @@ The installed command does not depend on this checkout or invoke pnpm. Before
 switching `current`, the installer verifies that any existing public launcher
 is the managed symlink. A rejected launcher leaves the prior selector and the
 unowned launcher unchanged. Activation-rename failure preserves the prior
-selector and removes an invocation-created launcher only after verifying its
-identity. These bounded single-invocation guarantees are not an atomic
+selector and moves an invocation-created launcher out of the public path into a
+task-owned quarantine without deleting it during recovery. These bounded
+single-invocation guarantees are not an atomic
 transaction across both symlinks or protection from uncoordinated writers.
 
 Version 0.3.1 supports installation from an already immutable payload on

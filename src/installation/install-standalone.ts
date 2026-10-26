@@ -34,6 +34,7 @@ export interface InstallStandaloneFileOperations {
 	readonly rename: (source: string, destination: string) => Promise<void>;
 	readonly remove: (target: string) => Promise<void>;
 	readonly activationRename?: (source: string, destination: string) => Promise<void>;
+	readonly cleanupAfterIdentityRead?: (quarantine: string) => Promise<void>;
 }
 
 interface ExecutableIdentity {
@@ -104,10 +105,11 @@ export async function installStandalone(
 	} catch (activationError) {
 		if (executableIdentity) {
 			try {
-				await removeCreatedExecutable(
+				await quarantineCreatedExecutable(
 					executableLink,
 					managedTarget,
 					executableIdentity,
+					fileOperations.cleanupAfterIdentityRead,
 				);
 			} catch (cleanupError) {
 				throw new AggregateError(
@@ -324,23 +326,22 @@ async function validateCurrentSelector(currentLink: string): Promise<void> {
 	}
 }
 
-async function removeCreatedExecutable(
+async function quarantineCreatedExecutable(
 	executableLink: string,
 	managedTarget: string,
 	identity: ExecutableIdentity,
+	afterIdentityRead?: (quarantine: string) => Promise<void>,
 ): Promise<void> {
 	const quarantine = `${executableLink}.cleanup-${randomBytes(16).toString("hex")}`;
 	await rename(executableLink, quarantine);
 	const stats = await lstat(quarantine);
+	await afterIdentityRead?.(quarantine);
 	const observedTarget = stats.isSymbolicLink() ? await readlink(quarantine) : null;
 	const owned =
 		stats.dev === identity.device &&
 		stats.ino === identity.inode &&
 		observedTarget === managedTarget;
-	if (owned) {
-		await rm(quarantine);
-		return;
-	}
+	if (owned) return;
 	if (observedTarget !== null) await symlink(observedTarget, executableLink);
 	throw new Error(
 		`Invocation-created executable changed identity during activation failure; preserved at ${quarantine}`,

@@ -108,6 +108,7 @@ async function noStaging(value: Fixture): Promise<void> {
 function activationFailureOperations(
 	error: Error,
 	beforeFailure?: () => Promise<void>,
+	cleanupAfterIdentityRead?: (quarantine: string) => Promise<void>,
 ): InstallStandaloneFileOperations {
 	return {
 		rename: async (source, destination) => await rename(source, destination),
@@ -116,6 +117,7 @@ function activationFailureOperations(
 			await beforeFailure?.();
 			throw error;
 		},
+		...(cleanupAfterIdentityRead === undefined ? {} : { cleanupAfterIdentityRead }),
 	};
 }
 
@@ -220,6 +222,12 @@ describe("standalone activation failure preservation", () => {
 		);
 		assert.equal(await readlink(installedA.currentLink), selectorBefore);
 		await assert.rejects(lstat(installedA.executableLink), /ENOENT/);
+		assert.equal(
+			(await readdir(value.binHome)).filter((name) =>
+				name.startsWith("proto-lithify.cleanup-"),
+			).length,
+			1,
+		);
 	});
 
 	it("R3.E preserves a same-target launcher replacement instead of deleting it", async () => {
@@ -263,6 +271,35 @@ describe("standalone activation failure preservation", () => {
 		);
 		assert.equal(quarantines.length, 1);
 		const preserved = await lstat(path.join(value.binHome, quarantines[0] ?? ""));
+		assert.deepEqual({ dev: preserved.dev, ino: preserved.ino }, replacementIdentity);
+	});
+
+	it("R3.F never deletes a same-target replacement after identity observation", async () => {
+		const value = await fixture();
+		const installedA = await installA(value);
+		await rm(installedA.executableLink);
+		const failure = new Error("simulated activation rename failure");
+		let replacementIdentity: { readonly dev: number; readonly ino: number } | undefined;
+		const replaceQuarantine = async (quarantine: string): Promise<void> => {
+			const target = await readlink(quarantine);
+			await rm(quarantine);
+			await symlink(target, quarantine);
+			const stats = await lstat(quarantine);
+			replacementIdentity = { dev: stats.dev, ino: stats.ino };
+		};
+		await assert.rejects(
+			installStandalone(
+				requestB(value),
+				activationFailureOperations(failure, undefined, replaceQuarantine),
+			),
+			(error: unknown) => error === failure,
+		);
+		await assert.rejects(lstat(installedA.executableLink), /ENOENT/);
+		const quarantine = (await readdir(value.binHome)).find((name) =>
+			name.startsWith("proto-lithify.cleanup-"),
+		);
+		assert.notEqual(quarantine, undefined);
+		const preserved = await lstat(path.join(value.binHome, quarantine ?? ""));
 		assert.deepEqual({ dev: preserved.dev, ino: preserved.ino }, replacementIdentity);
 	});
 });
