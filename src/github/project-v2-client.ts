@@ -12,6 +12,10 @@ import {
 } from "../receipts/schemas.ts";
 import { githubIssueUrl, splitGitHubRepository } from "./issue-identity.ts";
 import {
+	observeProjectCatalog,
+	observeProjectFields,
+} from "./project-catalog-observation.ts";
+import {
 	assertProjectFieldObservation,
 	assertProjectGraphqlResponseHasNoErrors,
 	nextProjectObservationCursor,
@@ -38,8 +42,6 @@ const ProjectViewSchema = z.object({
 const ISSUE_PROJECT_ITEMS_QUERY = `query($owner:String!,$repository:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$repository){issue(number:$number){id projectItems(first:100,after:$cursor,includeArchived:true){nodes{id isArchived project{id number title url}} pageInfo{hasNextPage endCursor}}}}}`;
 const PROJECT_COLLECTION_ITEMS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{items(first:100,after:$cursor,archivedStates:[ARCHIVED,NOT_ARCHIVED]){nodes{id isArchived content{... on Issue{id}}} pageInfo{hasNextPage endCursor}}}}}`;
 const ITEM_FIELDS_QUERY = `query($itemId:ID!,$cursor:String){node(id:$itemId){... on ProjectV2Item{id isArchived fieldValues(first:100,after:$cursor){nodes{__typename ... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldNumberValue{number field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldDateValue{date field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldIterationValue{title field{... on ProjectV2FieldCommon{name}}}} pageInfo{hasNextPage endCursor}}}}}`;
-const PROJECT_FIELDS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{fields(first:100,after:$cursor){nodes{__typename ... on ProjectV2Field{id name dataType} ... on ProjectV2IterationField{id name} ... on ProjectV2SingleSelectField{id name options{id name}}} pageInfo{hasNextPage endCursor}}}}}`;
-const PROJECT_VIEWS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{views(first:100,after:$cursor){nodes{name layout filter} pageInfo{hasNextPage endCursor}}}}}`;
 
 interface ConnectionPage<T> {
 	readonly nodes: readonly T[];
@@ -95,11 +97,11 @@ export class ProjectV2Client implements GithubProjectGateway {
 
 	async inspectProject(owner: string, number: number): Promise<ProjectSnapshot> {
 		const project = await this.getProject(owner, number);
-		const [fields, views] = await Promise.all([
-			this.listFields(project.id),
-			this.listViews(project.id),
-		]);
-		return ProjectSnapshotSchema.parse({ project, fields, views });
+		const catalog = await observeProjectCatalog(
+			project.id,
+			async (query, variables) => await this.graphql(query, variables),
+		);
+		return ProjectSnapshotSchema.parse({ project, ...catalog });
 	}
 
 	async inspectItem(request: ItemInspectionRequest): Promise<ItemSnapshot> {
@@ -181,7 +183,10 @@ export class ProjectV2Client implements GithubProjectGateway {
 		fieldName: string,
 		optionName: string,
 	): Promise<{ readonly fieldId: string; readonly optionId: string }> {
-		const fields = await this.listFields(projectId);
+		const fields = await observeProjectFields(
+			projectId,
+			async (query, variables) => await this.graphql(query, variables),
+		);
 		const matches = fields.filter(
 			(field) => field.name === fieldName && field.options !== undefined,
 		);
@@ -337,61 +342,5 @@ export class ProjectV2Client implements GithubProjectGateway {
 			);
 		} while (cursor !== null);
 		return fields;
-	}
-
-	private async listFields(projectId: string): Promise<ProjectSnapshot["fields"]> {
-		let cursor: string | null = null;
-		const fields: ProjectSnapshot["fields"][number][] = [];
-		do {
-			const response = await this.graphql(PROJECT_FIELDS_QUERY, { projectId, cursor });
-			const node = asRecord(asRecord(response.data, "GraphQL data").node, "Project");
-			const page = connection(node.fields, "Project fields");
-			for (const field of page.nodes) {
-				if (typeof field.id !== "string" || typeof field.name !== "string") continue;
-				const options = Array.isArray(field.options)
-					? field.options.map((option) => {
-							const record = asRecord(option, "single-select option");
-							return {
-								id: asString(record.id, "option id"),
-								name: asString(record.name, "option name"),
-							};
-						})
-					: undefined;
-				fields.push({
-					id: field.id,
-					name: field.name,
-					type:
-						typeof field.dataType === "string"
-							? field.dataType
-							: typeof field.__typename === "string"
-								? field.__typename
-								: options === undefined
-									? "UNKNOWN"
-									: "SINGLE_SELECT",
-					...(options === undefined ? {} : { options }),
-				});
-			}
-			cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
-		} while (cursor !== null);
-		return fields;
-	}
-
-	private async listViews(projectId: string): Promise<ProjectSnapshot["views"]> {
-		let cursor: string | null = null;
-		const views: ProjectSnapshot["views"][number][] = [];
-		do {
-			const response = await this.graphql(PROJECT_VIEWS_QUERY, { projectId, cursor });
-			const node = asRecord(asRecord(response.data, "GraphQL data").node, "Project");
-			const page = connection(node.views, "Project views");
-			for (const view of page.nodes) {
-				views.push({
-					name: asString(view.name, "view name"),
-					layout: asString(view.layout, "view layout"),
-					filter: typeof view.filter === "string" ? view.filter : "",
-				});
-			}
-			cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
-		} while (cursor !== null);
-		return views;
 	}
 }

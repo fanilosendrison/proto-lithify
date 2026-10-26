@@ -226,8 +226,18 @@ describe("ProjectV2Client", () => {
 					node: {
 						fields: {
 							nodes: [
-								{ id: "field-1", name: "Status", options: [] },
-								{ id: "field-2", name: "Status", options: [] },
+								{
+									__typename: "ProjectV2SingleSelectField",
+									id: "field-1",
+									name: "Status",
+									options: [],
+								},
+								{
+									__typename: "ProjectV2SingleSelectField",
+									id: "field-2",
+									name: "Status",
+									options: [],
+								},
 							],
 							pageInfo: { hasNextPage: false, endCursor: null },
 						},
