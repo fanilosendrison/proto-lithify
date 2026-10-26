@@ -33,6 +33,13 @@ export interface InstallStandaloneResult {
 export interface InstallStandaloneFileOperations {
 	readonly rename: (source: string, destination: string) => Promise<void>;
 	readonly remove: (target: string) => Promise<void>;
+	readonly activationRename?: (source: string, destination: string) => Promise<void>;
+	readonly cleanupAfterIdentityRead?: (quarantine: string) => Promise<void>;
+}
+
+interface ExecutableIdentity {
+	readonly device: number;
+	readonly inode: number;
 }
 
 const defaultFileOperations: InstallStandaloneFileOperations = {
@@ -78,13 +85,42 @@ export async function installStandalone(
 	await verifyTreeReadOnly(releaseDirectory);
 
 	const currentLink = path.join(applicationRoot, "current");
-	await activateCurrent(applicationRoot, currentLink, releaseName);
+	await validateCurrentSelector(currentLink);
 	const executableLink = path.join(request.binHome, EXECUTABLE_NAME);
 	const managedTarget = path.relative(
 		request.binHome,
 		path.join(currentLink, "bin", `${EXECUTABLE_NAME}.mjs`),
 	);
-	await ensureStableExecutable(executableLink, managedTarget);
+	const executableIdentity = await ensureStableExecutable(
+		executableLink,
+		managedTarget,
+	);
+	try {
+		await activateCurrent(
+			applicationRoot,
+			currentLink,
+			releaseName,
+			fileOperations.activationRename ?? defaultFileOperations.rename,
+		);
+	} catch (activationError) {
+		if (executableIdentity) {
+			try {
+				await quarantineCreatedExecutable(
+					executableLink,
+					managedTarget,
+					executableIdentity,
+					fileOperations.cleanupAfterIdentityRead,
+				);
+			} catch (cleanupError) {
+				throw new AggregateError(
+					[activationError, cleanupError],
+					"Activation failed and the invocation-created launcher could not be safely cleaned",
+					{ cause: activationError },
+				);
+			}
+		}
+		throw activationError;
+	}
 	return { releaseDirectory, currentLink, executableLink, reused };
 }
 
@@ -234,23 +270,20 @@ async function activateCurrent(
 	applicationRoot: string,
 	currentLink: string,
 	releaseName: string,
+	activationRename: (source: string, destination: string) => Promise<void>,
 ): Promise<void> {
 	const temporaryLink = path.join(
 		applicationRoot,
 		`.current-${randomBytes(16).toString("hex")}`,
 	);
 	await symlink(path.join("releases", releaseName), temporaryLink);
-	try {
-		await rename(temporaryLink, currentLink);
-	} finally {
-		await rm(temporaryLink, { force: true });
-	}
+	await activationRename(temporaryLink, currentLink);
 }
 
 async function ensureStableExecutable(
 	executableLink: string,
 	managedTarget: string,
-): Promise<void> {
+): Promise<ExecutableIdentity | null> {
 	try {
 		const stats = await lstat(executableLink);
 		if (!stats.isSymbolicLink()) {
@@ -262,10 +295,53 @@ async function ensureStableExecutable(
 		if (currentTarget !== managedTarget) {
 			throw new Error(`Executable symlink has an unmanaged target: ${executableLink}`);
 		}
+		return null;
 	} catch (error) {
 		if (!isMissing(error)) throw error;
 		await symlink(managedTarget, executableLink);
+		const stats = await lstat(executableLink);
+		return { device: stats.dev, inode: stats.ino };
 	}
+}
+
+async function validateCurrentSelector(currentLink: string): Promise<void> {
+	try {
+		const stats = await lstat(currentLink);
+		if (!stats.isSymbolicLink()) {
+			throw new Error(
+				`Current selector already exists and is not a symlink: ${currentLink}`,
+			);
+		}
+		const target = await readlink(currentLink);
+		const segments = target.split(path.sep);
+		if (segments.length !== 2 || segments[0] !== "releases" || !segments[1]) {
+			throw new Error(`Current selector has an unmanaged target: ${currentLink}`);
+		}
+	} catch (error) {
+		if (!isMissing(error)) throw error;
+	}
+}
+
+async function quarantineCreatedExecutable(
+	executableLink: string,
+	managedTarget: string,
+	identity: ExecutableIdentity,
+	afterIdentityRead?: (quarantine: string) => Promise<void>,
+): Promise<void> {
+	const quarantine = `${executableLink}.cleanup-${randomBytes(16).toString("hex")}`;
+	await rename(executableLink, quarantine);
+	const stats = await lstat(quarantine);
+	await afterIdentityRead?.(quarantine);
+	const observedTarget = stats.isSymbolicLink() ? await readlink(quarantine) : null;
+	const owned =
+		stats.dev === identity.device &&
+		stats.ino === identity.inode &&
+		observedTarget === managedTarget;
+	if (owned) return;
+	if (observedTarget !== null) await symlink(observedTarget, executableLink);
+	throw new Error(
+		`Invocation-created executable changed identity during activation failure; preserved at ${quarantine}`,
+	);
 }
 
 function validateRequest(request: InstallStandaloneRequest): void {

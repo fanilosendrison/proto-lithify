@@ -5,7 +5,7 @@ asset_type: "architecture"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify architecture"
-version: "0.4.1"
+version: "0.4.2"
 ---
 
 # Architecture
@@ -73,6 +73,21 @@ additive or exceptional provider changes and does not freeze state or serialize
 callers. A `410 Gone` or another failure propagates normally. If a POST may have
 been submitted, any POST or fresh-read failure preserves remote-effect
 uncertainty without automatic retry or rollback claim.
+
+## Complete Project catalog observation
+
+Project inspection traverses the fields and views connections independently to
+`hasNextPage=false` through the same bounded cursor-validation primitive used by
+item observations. A missing, empty, repeated, or nonadvancing next cursor
+fails closed. Field identities must be nonempty and unique across every page.
+Only the explicitly represented field types are accepted; a multi-select or
+future provider type is rejected rather than omitted from a verified catalog.
+
+View names and layouts are required. A present `null` filter has the defined
+output representation `""`, while a missing or non-string, non-null filter is
+invalid. These complete sequential reads establish a validated catalog
+projection for the invocation. They do not establish one provider-global atomic
+snapshot or prevent changes between the fields and views observations.
 
 ## Archive-complete membership observation
 
@@ -145,7 +160,7 @@ SUCCESSFUL_RECEIPT != PERMANENT_STATE
 
 ## Versioned receipt boundary
 
-The source 0.4.1 output boundary accepts only the nine strict version 2 success
+The source 0.4.2 output boundary accepts only the nine strict version 2 success
 branches defined by command and outcome. Each candidate is validated as a whole
 before any stdout byte is written. A validation failure emits one bounded,
 sanitized version 2 error with `RECEIPT_VALIDATION_FAILED`; it does not emit a
@@ -210,6 +225,29 @@ after such an ambiguous failure. Fresh postcondition observation can establish
 state at the time of its read, but it does not prove historical non-execution or
 serialize against in-flight remote work.
 
+## Standalone activation boundary
+
+Immutable release publication and selector activation remain separate
+filesystem operations. Before changing `current`, the installer validates that
+an existing selector is managed and that the stable public launcher is either
+absent or has the exact managed target. A launcher conflict therefore preserves
+the previous selector and never overwrites the unowned object; a verified newly
+published release may remain available.
+
+Activation uses a task-owned temporary symlink and atomic rename for the single
+`current` selector. Successful rename consumes that temporary name. On failure,
+the prior selector remains active and the random temporary name is retained as
+an inactive quarantine; recovery does not delete it because another writer may
+have replaced its object. When the invocation created a previously absent launcher,
+cleanup atomically moves the observed public path to a random task-owned
+quarantine name. Recovery never deletes that quarantined object, including when
+its identity changes after observation. If the moved identity differs, an
+equivalent symlink is recreated at the public path only if that path is still
+absent, and the installation still fails. This is bounded
+single-invocation failure preservation, not an atomic
+transaction over the selector and launcher, crash-proof multi-object commit, or
+serialization against external writers.
+
 ## Modules
 
 - `src/cli/` validates command syntax.
@@ -245,5 +283,9 @@ contracts without changing GitHub operations, adding retries, or rewriting
 historical version 1 evidence. Version 0.4.1 pins the three direct REST request
 categories to GitHub API version `2022-11-28` without changing GraphQL,
 `gh project`, process execution, retries, mutation semantics, or receipt version
-2. No version claims multi-command transactions; each command exposes and
-verifies only its own observed postcondition.
+2. Version 0.4.2 completes Project catalog traversal, rejects partial catalog
+projections, and preserves prior standalone activation state on qualified
+failure paths without adding multi-select mutation, provider-global snapshots,
+or multi-object filesystem transactions. No version claims multi-command
+transactions; each command exposes and verifies only its own observed
+postcondition.

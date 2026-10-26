@@ -226,8 +226,18 @@ describe("ProjectV2Client", () => {
 					node: {
 						fields: {
 							nodes: [
-								{ id: "field-1", name: "Status", options: [] },
-								{ id: "field-2", name: "Status", options: [] },
+								{
+									__typename: "ProjectV2SingleSelectField",
+									id: "field-1",
+									name: "Status",
+									options: [],
+								},
+								{
+									__typename: "ProjectV2SingleSelectField",
+									id: "field-2",
+									name: "Status",
+									options: [],
+								},
 							],
 							pageInfo: { hasNextPage: false, endCursor: null },
 						},
@@ -240,5 +250,39 @@ describe("ProjectV2Client", () => {
 			client.resolveSingleSelect("PVT_project", "Status", "Ready"),
 			/exactly one field named "Status"/,
 		);
+	});
+
+	it("preserves field resolution when unrelated catalog fields are unrepresentable", async () => {
+		const executor = new QueuedExecutor([
+			{
+				data: {
+					node: {
+						fields: {
+							nodes: [
+								{ __typename: "ProjectV2MultiSelectField" },
+								{ __typename: "ProjectV2Field" },
+								{
+									__typename: "ProjectV2SingleSelectField",
+									id: "field-status",
+									name: "Status",
+									options: [{ id: "option-ready", name: "Ready" }],
+								},
+							],
+							pageInfo: { hasNextPage: false, endCursor: null },
+						},
+					},
+				},
+			},
+		]);
+
+		assert.deepEqual(
+			await new ProjectV2Client(executor.execute).resolveSingleSelect(
+				"PVT_project",
+				"Status",
+				"Ready",
+			),
+			{ fieldId: "field-status", optionId: "option-ready" },
+		);
+		executor.assertDrained();
 	});
 });

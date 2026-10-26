@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.4.1"
+version: "0.4.2"
 ---
 
 # CLI contract
@@ -27,7 +27,7 @@ not an accepted command argument.
 
 Success writes exactly one JSON receipt to stdout only after the complete
 candidate passes the strict producer schema. Diagnostics and errors write to
-stderr. Source version 0.4.1 emits schema version 2 for both success and error
+stderr. Source version 0.4.2 emits schema version 2 for both success and error
 receipts. Mutation success still requires a fresh read proving the requested
 postcondition. Project membership is established only when the Issue projection
 and the Project's own item collection contain the same unique item identity.
@@ -82,7 +82,7 @@ The generated schema assets are:
 - `versioned-error-receipt.schema.json`: explicit v1/v2 error reader.
 
 Consumers that require version 1 must use the historical asset. Consumers that
-accept persisted mixed data use the versioned reader. The 0.4.1 producer never
+accept persisted mixed data use the versioned reader. The 0.4.2 producer never
 emits version 1 merely for an older consumer. Runtime Zod and generated Draft
 2020-12 acceptance are independently checked with Ajv.
 
@@ -105,7 +105,7 @@ over-limit response fails closed rather than triggering speculative pagination.
 
 ## GitHub REST API version
 
-Source version 0.4.1 selects GitHub REST API version `2022-11-28` through the
+Source version 0.4.2 selects GitHub REST API version `2022-11-28` through the
 single constant in `src/github/rest-api.ts`. Each Proto-Lithify-owned direct
 REST `gh api` request appends exactly one
 `X-GitHub-Api-Version: 2022-11-28` header. The covered calls are blocker Issue
@@ -150,7 +150,26 @@ snapshot. Source version 0.4.0 preserves CLI syntax and operation behavior while
 making both producer envelopes strict version 2 contracts; the historical v1
 input contract remains separately available. Source version 0.4.1 preserves
 those strict version 2 contracts and pins only the three direct REST request
-categories to GitHub API version `2022-11-28`.
+categories to GitHub API version `2022-11-28`. Source version 0.4.2 preserves
+the CLI and receipt contracts while making Project catalog inspection complete
+and standalone activation failure-preserving.
+
+## Complete Project catalog inspection
+
+`project.inspect` traverses all pages of both Project fields and views. Each
+connection has independent cursor history, and `hasNextPage=true` requires a
+nonempty, advancing cursor. Missing, repeated, or cyclic cursors fail closed, so
+no partial catalog can produce an `inspected` receipt.
+
+Every field requires a nonempty opaque ID, name, and supported discriminator.
+Duplicate IDs and field types that the current snapshot cannot represent,
+including multi-select fields, are rejected rather than silently omitted. This
+is an observation boundary only; it does not add multi-select mutation support.
+
+Every view requires a name, layout, and present filter property. A valid
+provider `null` filter is normalized to the documented empty-string output;
+missing or non-string, non-null values fail. Fields and views are sequentially
+complete observations, not one provider-global atomic snapshot.
 
 ## Archive-complete item snapshots
 

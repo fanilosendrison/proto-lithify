@@ -9,7 +9,10 @@ const testFiles = [
 	"tests/issue-dependency-operations.test.ts",
 	"tests/dependency-concurrency.test.ts",
 	"tests/rest-api-version.test.ts",
+	"tests/access-denial.test.ts",
 	"tests/project-v2-client.test.ts",
+	"tests/project-inspect-pagination.test.ts",
+	"tests/project-inspect-incomplete.test.ts",
 	"tests/project-archive-membership.test.ts",
 	"tests/project-archive-pagination.test.ts",
 	"tests/project-archive-operations.test.ts",
@@ -23,6 +26,7 @@ const testFiles = [
 	"tests/receipt-output.test.ts",
 	"tests/cli.test.ts",
 	"tests/installation.test.ts",
+	"tests/standalone-activation-faults.test.ts",
 ].map((file) => path.join(repositoryRoot, file));
 
 const result = spawnSync(

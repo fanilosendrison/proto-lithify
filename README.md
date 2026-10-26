@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.4.1"
+version: "0.4.2"
 ---
 
 # Proto-Lithify
@@ -51,7 +51,16 @@ The installer deploys an immutable content-addressed release below
 ~/.local/bin/proto-lithify
 ```
 
-The installed command does not depend on this checkout or invoke pnpm.
+The installed command does not depend on this checkout or invoke pnpm. Before
+switching `current`, the installer verifies that any existing public launcher
+is the managed symlink. A rejected launcher leaves the prior selector and the
+unowned launcher unchanged. Activation-rename failure preserves the prior
+selector and moves an invocation-created launcher out of the public path into a
+task-owned quarantine without deleting it during recovery. A failed selector
+rename may likewise retain its random temporary name as an inactive quarantine.
+These bounded single-invocation guarantees are not an atomic transaction across
+both symlinks or protection from uncoordinated writers.
+
 Version 0.3.1 supports installation from an already immutable payload on
 filesystems that prohibit renaming write-disabled directories. Version 0.3.2
 adds canonical blocker identities to dependency receipts while retaining the
@@ -67,7 +76,9 @@ remain readable through explicitly named legacy and versioned reader schemas;
 they are never relabelled or treated as version 2 evidence. Version 0.4.1 pins
 all Proto-Lithify-owned direct GitHub REST requests to API version `2022-11-28`
 without changing CLI syntax, native dependency semantics, or receipt schema
-version 2.
+version 2. Version 0.4.2 completes Project field and view pagination, rejects
+partial or unrepresentable catalog observations, and preserves the active
+standalone selector when launcher validation or activation fails.
 
 Archived Project items remain members: archivedness is not absence and does not
 imply repository workflow completion. `item inspect` reports it, `item add`
@@ -79,9 +90,14 @@ rejected before option resolution.
 A verified receipt reports a validated observation, not global serialization,
 exclusive causality, an atomic GitHub snapshot, or permanent state. Archive-
 complete membership and field connections are fully paginated, and every
-projection must agree on the exact item ID and GitHub-sourced archive flag. The
-caller owns semantic authorization, participating-agent ordering, conflict
-decisions, and retry policy; GitHub remains the durable state owner.
+projection must agree on the exact item ID and GitHub-sourced archive flag.
+Project field and view catalogs are also traversed completely. Missing,
+repeated, or nonadvancing cursors; duplicate field IDs; malformed view filters;
+and unsupported field types fail closed rather than producing a partial
+verified snapshot. A nullable view filter is represented as the empty string;
+this normalization does not make the sequential reads an atomic provider
+snapshot. The caller owns semantic authorization, participating-agent ordering,
+conflict decisions, and retry policy; GitHub remains the durable state owner.
 
 Local child termination never proves remote mutation rollback. Proto-Lithify
 does not automatically retry a potentially mutating invocation after an
