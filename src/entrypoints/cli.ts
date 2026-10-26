@@ -9,10 +9,10 @@ import type { GhExecutor } from "../github/types.ts";
 import { IssueDependencyOperations } from "../issue-relations/issue-dependency-operations.ts";
 import { ProjectItemOperations } from "../project-items/project-item-operations.ts";
 import {
-	CommandReceiptSchema,
-	commandReceipt,
-	ErrorReceiptSchema,
-} from "../receipts/schemas.ts";
+	ReceiptOutputValidationError,
+	validateProducedSuccessReceipt,
+} from "../receipts/receipt-output.ts";
+import { commandReceipt, ErrorReceiptSchema } from "../receipts/schemas.ts";
 
 export async function runCli(
 	args: readonly string[],
@@ -122,20 +122,22 @@ function itemTarget(command: {
 }
 
 function writeReceipt(value: unknown): void {
-	const receipt = CommandReceiptSchema.parse(value);
+	const receipt = validateProducedSuccessReceipt(value);
 	process.stdout.write(`${JSON.stringify(receipt)}\n`);
 }
 
 function classifyError(error: unknown): unknown {
 	const code =
-		error instanceof CliUsageError || error instanceof GhExecutionError
+		error instanceof CliUsageError ||
+		error instanceof GhExecutionError ||
+		error instanceof ReceiptOutputValidationError
 			? error.code
 			: "OPERATION_FAILED";
 	const message = sanitizeDiagnostic(
 		error instanceof Error ? error.message : String(error),
 	);
 	return ErrorReceiptSchema.parse({
-		schemaVersion: 1,
+		schemaVersion: 2,
 		error: { code, message },
 	});
 }
