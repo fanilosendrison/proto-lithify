@@ -30,8 +30,10 @@ const issue = { id: 1001, number: 41,
  html_url: "https://github.com/example/repository/issues/41" };
 const diagnostic = process.env.FIXTURE_STATUS + " denied; ${token}; Authorization: Bearer ${bearer}; ${credentialUrl}";
 function fail() { process.stderr.write(diagnostic + "\\n"); process.exitCode = 1; }
-if (process.env.FIXTURE_SCENARIO === "rest-read") fail();
-else if (process.env.FIXTURE_SCENARIO === "graphql") {
+if (process.env.FIXTURE_SCENARIO === "rest-read") {
+ if (args[1] === "repos/example/repository/issues/41") process.stdout.write(JSON.stringify(issue));
+ else fail();
+} else if (process.env.FIXTURE_SCENARIO === "graphql") {
  if (args[0] === "project" && args[1] === "view") process.stdout.write(JSON.stringify({id:"PVT_project",number:3,title:"Engineering",url:"https://github.com/users/example/projects/3"}));
  else fail();
 } else if (process.env.FIXTURE_SCENARIO === "post") {
@@ -111,7 +113,9 @@ describe("CLI access denial", () => {
 			await resetLog();
 			assertDenied(run(dependencyArgs, "rest-read", status));
 			const observed = await calls();
-			assert.equal(observed.length, 1);
+			assert.equal(observed.length, 2);
+			assert.equal(observed[0]?.[1], "repos/example/repository/issues/41");
+			assert.match(observed[1]?.[1] ?? "", /dependencies\/blocked_by\?per_page=100$/);
 			assert.equal(
 				observed.some((args) => args.includes("POST")),
 				false,
