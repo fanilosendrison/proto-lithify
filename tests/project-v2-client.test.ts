@@ -251,4 +251,38 @@ describe("ProjectV2Client", () => {
 			/exactly one field named "Status"/,
 		);
 	});
+
+	it("preserves field resolution when unrelated catalog fields are unrepresentable", async () => {
+		const executor = new QueuedExecutor([
+			{
+				data: {
+					node: {
+						fields: {
+							nodes: [
+								{ __typename: "ProjectV2MultiSelectField" },
+								{ __typename: "ProjectV2Field" },
+								{
+									__typename: "ProjectV2SingleSelectField",
+									id: "field-status",
+									name: "Status",
+									options: [{ id: "option-ready", name: "Ready" }],
+								},
+							],
+							pageInfo: { hasNextPage: false, endCursor: null },
+						},
+					},
+				},
+			},
+		]);
+
+		assert.deepEqual(
+			await new ProjectV2Client(executor.execute).resolveSingleSelect(
+				"PVT_project",
+				"Status",
+				"Ready",
+			),
+			{ fieldId: "field-status", optionId: "option-ready" },
+		);
+		executor.assertDrained();
+	});
 });

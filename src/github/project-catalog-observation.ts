@@ -36,22 +36,64 @@ export async function observeProjectFields(
 	projectId: string,
 	graphql: CatalogGraphql,
 ): Promise<ProjectSnapshot["fields"]> {
-	let cursor: string | null = null;
-	const cursors = new Set<string>();
 	const fieldIds = new Set<string>();
 	const fields: ProjectSnapshot["fields"][number][] = [];
+	for (const field of await observeProjectFieldNodes(projectId, graphql)) {
+		const parsed = parseField(field);
+		if (fieldIds.has(parsed.id)) {
+			throw new Error(`Duplicate Project field id: ${parsed.id}`);
+		}
+		fieldIds.add(parsed.id);
+		fields.push(parsed);
+	}
+	return fields;
+}
+
+export async function observeResolvableProjectFields(
+	projectId: string,
+	graphql: CatalogGraphql,
+): Promise<ProjectSnapshot["fields"]> {
+	const fields: ProjectSnapshot["fields"][number][] = [];
+	for (const field of await observeProjectFieldNodes(projectId, graphql)) {
+		if (typeof field.id !== "string" || typeof field.name !== "string") continue;
+		const options = Array.isArray(field.options)
+			? field.options.map((option) => {
+					const record = asRecord(option, "single-select option");
+					return {
+						id: asString(record.id, "option id"),
+						name: asString(record.name, "option name"),
+					};
+				})
+			: undefined;
+		fields.push({
+			id: field.id,
+			name: field.name,
+			type:
+				typeof field.dataType === "string"
+					? field.dataType
+					: typeof field.__typename === "string"
+						? field.__typename
+						: options === undefined
+							? "UNKNOWN"
+							: "SINGLE_SELECT",
+			...(options === undefined ? {} : { options }),
+		});
+	}
+	return fields;
+}
+
+async function observeProjectFieldNodes(
+	projectId: string,
+	graphql: CatalogGraphql,
+): Promise<readonly JsonRecord[]> {
+	let cursor: string | null = null;
+	const cursors = new Set<string>();
+	const fields: JsonRecord[] = [];
 	do {
 		const response = await graphql(PROJECT_FIELDS_QUERY, { projectId, cursor });
 		const node = asRecord(asRecord(response.data, "GraphQL data").node, "Project");
 		const page = connection(node.fields, "Project fields");
-		for (const field of page.nodes) {
-			const parsed = parseField(field);
-			if (fieldIds.has(parsed.id)) {
-				throw new Error(`Duplicate Project field id: ${parsed.id}`);
-			}
-			fieldIds.add(parsed.id);
-			fields.push(parsed);
-		}
+		fields.push(...page.nodes);
 		cursor = nextProjectObservationCursor(page, cursor, cursors, "Project fields");
 	} while (cursor !== null);
 	return fields;

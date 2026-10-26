@@ -13,7 +13,7 @@ import {
 import { githubIssueUrl, splitGitHubRepository } from "./issue-identity.ts";
 import {
 	observeProjectCatalog,
-	observeProjectFields,
+	observeResolvableProjectFields,
 } from "./project-catalog-observation.ts";
 import {
 	assertProjectFieldObservation,
@@ -183,7 +183,7 @@ export class ProjectV2Client implements GithubProjectGateway {
 		fieldName: string,
 		optionName: string,
 	): Promise<{ readonly fieldId: string; readonly optionId: string }> {
-		const fields = await observeProjectFields(
+		const fields = await observeResolvableProjectFields(
 			projectId,
 			async (query, variables) => await this.graphql(query, variables),
 		);
