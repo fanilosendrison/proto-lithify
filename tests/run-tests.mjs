@@ -8,6 +8,7 @@ const testFiles = [
 	"tests/gh-process-control.test.ts",
 	"tests/issue-dependency-operations.test.ts",
 	"tests/dependency-concurrency.test.ts",
+	"tests/rest-api-version.test.ts",
 	"tests/project-v2-client.test.ts",
 	"tests/project-archive-membership.test.ts",
 	"tests/project-archive-pagination.test.ts",

@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.4.0"
+version: "0.4.1"
 ---
 
 # CLI contract
@@ -27,7 +27,7 @@ not an accepted command argument.
 
 Success writes exactly one JSON receipt to stdout only after the complete
 candidate passes the strict producer schema. Diagnostics and errors write to
-stderr. Source version 0.4.0 emits schema version 2 for both success and error
+stderr. Source version 0.4.1 emits schema version 2 for both success and error
 receipts. Mutation success still requires a fresh read proving the requested
 postcondition. Project membership is established only when the Issue projection
 and the Project's own item collection contain the same unique item identity.
@@ -82,7 +82,7 @@ The generated schema assets are:
 - `versioned-error-receipt.schema.json`: explicit v1/v2 error reader.
 
 Consumers that require version 1 must use the historical asset. Consumers that
-accept persisted mixed data use the versioned reader. The 0.4.0 producer never
+accept persisted mixed data use the versioned reader. The 0.4.1 producer never
 emits version 1 merely for an older consumer. Runtime Zod and generated Draft
 2020-12 acceptance are independently checked with Ajv.
 
@@ -103,6 +103,34 @@ GitHub.com completeness currently relies on the published limit of 50
 dependencies per relationship type and a list request capacity of 100. An
 over-limit response fails closed rather than triggering speculative pagination.
 
+## GitHub REST API version
+
+Source version 0.4.1 selects GitHub REST API version `2022-11-28` through the
+single constant in `src/github/rest-api.ts`. Each Proto-Lithify-owned direct
+REST `gh api` request appends exactly one
+`X-GitHub-Api-Version: 2022-11-28` header. The covered calls are blocker Issue
+identity resolution, blocked-by relationship inspection, and blocked-by
+relationship creation. The fresh inspection after a POST uses the same pinned
+version.
+
+GraphQL continues through unversioned `gh api graphql` arguments, and official
+`gh project view`, `gh project item-add`, and `gh project item-edit` commands do
+not receive the REST header. The REST version cannot be selected by an
+environment variable, CLI option, caller input, provider default, or runtime
+negotiation. There is no fallback to another API version and no automatic retry.
+
+GitHub currently announces support for `2022-11-28` through March 10, 2028.
+Before retirement, migration requires a separately reviewed change that assesses
+the target version's breaking changes and qualifies every consumed REST
+endpoint. Pinning does not prevent additive changes or exceptional security and
+reliability changes by the provider. It does not make GitHub state immutable or
+globally serializable.
+
+A provider failure, including `410 Gone`, propagates through existing error
+handling. Failure after a potentially submitted POST or during its fresh read
+does not prove nonapplication, authorize an automatic retry, or establish
+rollback; the remote effect remains undetermined.
+
 Published JSON Schemas are generated under `schemas/` from the runtime Zod
 contracts. Generated receipt assets distinguish current producer, historical
 version 1, and explicit versioned-reader contracts.
@@ -120,7 +148,9 @@ identity. Source version 0.3.5 preserves those inputs and the generic version-1
 envelope while adding required GitHub-sourced archivedness to every item
 snapshot. Source version 0.4.0 preserves CLI syntax and operation behavior while
 making both producer envelopes strict version 2 contracts; the historical v1
-input contract remains separately available.
+input contract remains separately available. Source version 0.4.1 preserves
+those strict version 2 contracts and pins only the three direct REST request
+categories to GitHub API version `2022-11-28`.
 
 ## Archive-complete item snapshots
 

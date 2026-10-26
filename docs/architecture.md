@@ -5,7 +5,7 @@ asset_type: "architecture"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify architecture"
-version: "0.4.0"
+version: "0.4.1"
 ---
 
 # Architecture
@@ -50,6 +50,29 @@ Dependency inspection is complete only within the current GitHub.com contract:
 100. Over-limit or contradictory observations fail closed. This boundary does
 not claim global concurrency serialization or completeness for a different
 provider contract.
+
+## REST API version boundary
+
+`src/github/rest-api.ts` owns the sole production version constant,
+`2022-11-28`, and appends one exact `X-GitHub-Api-Version: 2022-11-28` header to
+every direct REST argument array. The three construction categories are blocker
+Issue identity GET, blocked-by collection GET, and blocked-by POST. Fresh
+post-mutation dependency observation reuses the same collection path and is
+therefore versioned identically.
+
+This narrow constructor does not wrap the generic executor. GraphQL remains
+`gh api graphql`, while Project reads and mutations remain official `gh project`
+commands; neither receives the REST header. The version has no environment,
+caller, or CLI override and no provider-default, negotiation, fallback, or retry
+path.
+
+GitHub currently announces support through March 10, 2028. Migration before
+retirement requires a separately reviewed repository change, target-version
+breaking-change assessment, and endpoint qualification. Pinning does not prevent
+additive or exceptional provider changes and does not freeze state or serialize
+callers. A `410 Gone` or another failure propagates normally. If a POST may have
+been submitted, any POST or fresh-read failure preserves remote-effect
+uncertainty without automatic retry or rollback claim.
 
 ## Archive-complete membership observation
 
@@ -122,7 +145,7 @@ SUCCESSFUL_RECEIPT != PERMANENT_STATE
 
 ## Versioned receipt boundary
 
-The source 0.4.0 output boundary accepts only the nine strict version 2 success
+The source 0.4.1 output boundary accepts only the nine strict version 2 success
 branches defined by command and outcome. Each candidate is validated as a whole
 before any stdout byte is written. A validation failure emits one bounded,
 sanitized version 2 error with `RECEIPT_VALIDATION_FAILED`; it does not emit a
@@ -219,5 +242,8 @@ Version 0.3.5 adds archive-complete membership and lifecycle-safe observations
 without implicit unarchive, atomic archivedness preconditions, or caching.
 Version 0.4.0 adds strict command-discriminated version 2 success and error
 contracts without changing GitHub operations, adding retries, or rewriting
-historical version 1 evidence. No version claims multi-command transactions;
-each command exposes and verifies only its own observed postcondition.
+historical version 1 evidence. Version 0.4.1 pins the three direct REST request
+categories to GitHub API version `2022-11-28` without changing GraphQL,
+`gh project`, process execution, retries, mutation semantics, or receipt version
+2. No version claims multi-command transactions; each command exposes and
+verifies only its own observed postcondition.

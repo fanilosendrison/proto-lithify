@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.4.0"
+version: "0.4.1"
 ---
 
 # Proto-Lithify
@@ -64,7 +64,10 @@ and exposes GitHub's required boolean `isArchived` on every item snapshot.
 Version 0.4.0 is a breaking serialized-protocol release: new success and error
 receipts use strict schema version 2 contracts. Historical version 1 receipts
 remain readable through explicitly named legacy and versioned reader schemas;
-they are never relabelled or treated as version 2 evidence.
+they are never relabelled or treated as version 2 evidence. Version 0.4.1 pins
+all Proto-Lithify-owned direct GitHub REST requests to API version `2022-11-28`
+without changing CLI syntax, native dependency semantics, or receipt schema
+version 2.
 
 Archived Project items remain members: archivedness is not absence and does not
 imply repository workflow completion. `item inspect` reports it, `item add`
@@ -85,6 +88,28 @@ does not automatically retry a potentially mutating invocation after an
 ambiguous post-spawn failure. Direct-child supervision also makes no guarantee
 about descendants. See the CLI contract for the complete cancellation and
 remote-effect boundary.
+
+## GitHub REST API version
+
+`src/github/rest-api.ts` is the single production authority for GitHub REST API
+version `2022-11-28`. Every owned direct REST `gh api` request appends exactly
+one `X-GitHub-Api-Version: 2022-11-28` header. This covers blocker Issue
+identity resolution, blocked-by relationship inspection, and blocked-by
+relationship creation.
+
+The pin does not apply to `gh api graphql` or official `gh project` commands.
+There is no environment or CLI override, implicit provider default, version
+negotiation, fallback to another version, or automatic retry. A failed request,
+including `410 Gone`, follows the existing failure path. After a potentially
+submitted mutation, failure still leaves the remote effect undetermined and
+does not establish rollback or safe retry.
+
+GitHub currently announces support for `2022-11-28` through March 10, 2028.
+Migration before retirement requires a separately reviewed repository change,
+assessment of the target version's breaking changes, and qualification of every
+consumed REST endpoint. A pinned version does not prevent additive or exceptional
+security and reliability changes by GitHub, freeze remote state, or provide
+global serialization.
 
 ## Commands
 
