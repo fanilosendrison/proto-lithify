@@ -379,12 +379,12 @@ describe("Project item concurrency proof boundaries", () => {
 		}
 	});
 
-	it("C16 preserves schema version 1 and receipt shape", async () => {
+	it("C16 preserves the receipt shape under producer schema version 2", async () => {
 		const gateway = new ScriptedGateway([snapshot("Ready")]);
 		const receipt = await new ProjectItemOperations(gateway).setSingleSelect(
 			fieldRequest,
 		);
-		assert.equal(CommandReceiptSchema.parse(receipt).schemaVersion, 1);
+		assert.equal(CommandReceiptSchema.parse(receipt).schemaVersion, 2);
 		assert.deepEqual(Object.keys(receipt).sort(), [
 			"after",
 			"before",

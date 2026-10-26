@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.3.5"
+version: "0.4.0"
 ---
 
 # Proto-Lithify
@@ -61,6 +61,10 @@ stream closure cannot be confirmed. Version 0.3.4 binds Project-item mutation
 receipts to the requested target and preserves opaque identity across
 `field.set` observations. Version 0.3.5 makes Project membership archive-complete
 and exposes GitHub's required boolean `isArchived` on every item snapshot.
+Version 0.4.0 is a breaking serialized-protocol release: new success and error
+receipts use strict schema version 2 contracts. Historical version 1 receipts
+remain readable through explicitly named legacy and versioned reader schemas;
+they are never relabelled or treated as version 2 evidence.
 
 Archived Project items remain members: archivedness is not absence and does not
 imply repository workflow completion. `item inspect` reports it, `item add`
@@ -97,12 +101,26 @@ proto-lithify dependency add-blocker --repo <owner/repository> --issue <number> 
 The former independent `--issue-url` flag is rejected.
 
 Dependency receipts expose canonical identities through `blockedByIssues`. The
-public contracts are generated as
-[`dependency-snapshot.schema.json`](schemas/dependency-snapshot.schema.json) and
-[`item-snapshot.schema.json`](schemas/item-snapshot.schema.json). New item
-snapshots require `isArchived`; historical item snapshots lacking it do not
-validate against the strict 0.3.5 snapshot schema, while generic receipt
-envelopes remain at `schemaVersion=1`.
+public contracts are generated from the runtime Zod authorities. The canonical
+`command-receipt.schema.json` and `error-receipt.schema.json` assets validate
+only strict producer version 2. Historical consumers use the explicit
+`command-receipt-v1.schema.json` and `error-receipt-v1.schema.json` assets;
+mixed readers use `versioned-command-receipt.schema.json` and
+`versioned-error-receipt.schema.json`. Snapshot assets remain separately
+available for Projects, items, and dependencies.
+
+Version 2 has exactly nine authorized success variants across the six commands.
+Targets, requests, snapshots, and true-only postconditions are command-specific
+and reject unknown fixed-object properties. New item snapshots require
+`isArchived`, and new dependency snapshots require `blockedByIssues`. Historical
+version 1 payloads lacking those fields remain legacy-readable because the old
+weak envelope is preserved without reinterpretation.
+
+Consumers that hardcode `schemaVersion=1` must migrate to version 2 or select an
+explicit versioned reader. The source implementation does not update the global
+installed CLI; rollout remains separately authorized. Receipt validation proves
+structural compliance only, not unique remote causality, atomic observation,
+permanence, or rollback.
 
 See [the CLI contract](docs/cli-contract.md) and
 [the architecture](docs/architecture.md) for authority and output guarantees.

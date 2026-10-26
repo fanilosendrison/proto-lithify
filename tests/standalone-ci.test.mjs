@@ -266,7 +266,7 @@ else { process.stderr.write('UNEXPECTED FAKE GH INVOCATION\\n'); process.exitCod
 			run(publicLauncher, ["doctor"], { env, cwd: root }).trim(),
 		);
 
-		assert.equal(doctor.schemaVersion, 1);
+		assert.equal(doctor.schemaVersion, 2);
 		assert.equal(doctor.command, "doctor");
 		assert.equal(doctor.outcome, "inspected");
 		assert.equal(doctor.postcondition.verified, true);

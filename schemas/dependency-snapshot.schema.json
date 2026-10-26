@@ -22,7 +22,7 @@
 					},
 					"repository": {
 						"type": "string",
-						"pattern": "^[^/]+\\/[^/]+$"
+						"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
 					},
 					"number": {
 						"type": "integer",

@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.3.5"
+version: "0.4.0"
 ---
 
 # CLI contract
@@ -25,11 +25,66 @@ not an accepted command argument.
 
 ## Output
 
-Success writes exactly one JSON receipt to stdout. Diagnostics and errors write
-to stderr. Receipt schema version 1 distinguishes `inspected`, `applied`, and
-`noop`. Mutation success requires a fresh read proving the requested
+Success writes exactly one JSON receipt to stdout only after the complete
+candidate passes the strict producer schema. Diagnostics and errors write to
+stderr. Source version 0.4.0 emits schema version 2 for both success and error
+receipts. Mutation success still requires a fresh read proving the requested
 postcondition. Project membership is established only when the Issue projection
 and the Project's own item collection contain the same unique item identity.
+
+### Strict version 2 success variants
+
+Exactly nine command/outcome combinations are structurally valid:
+
+| Command | Outcome | Before | After |
+| ------- | ------- | ------ | ----- |
+| `doctor`                 | `inspected` | `null`             | Doctor snapshot    |
+| `project.inspect`        | `inspected` | `null`             | Project snapshot   |
+| `item.inspect`           | `inspected` | `null`             | Item snapshot      |
+| `item.add`               | `noop`      | Item snapshot      | Item snapshot      |
+| `item.add`               | `applied`   | `null`             | Item snapshot      |
+| `field.set`              | `noop`      | Item snapshot      | Item snapshot      |
+| `field.set`              | `applied`   | Item snapshot      | Item snapshot      |
+| `dependency.add-blocker` | `noop`      | Dependency snapshot | Dependency snapshot |
+| `dependency.add-blocker` | `applied`   | Dependency snapshot | Dependency snapshot |
+
+Every branch has literal command and outcome tags, a true-only verified
+postcondition, and strict command-specific target and request objects. `doctor`
+uses empty target/request objects. Project inspection targets an owner and
+positive safe Project number. Item commands target an owner, Project number,
+canonical repository, and Issue number. Item addition requests the derived
+canonical Issue URL; field mutation requests nonempty field and option names.
+Dependency addition targets a canonical repository/Issue and requests a positive
+safe blocker number.
+
+The Doctor snapshot contains only a nonempty `ghVersion` and literal
+`authenticated:true`. Fixed snapshot and identity objects reject unknown
+properties. `ItemSnapshot.fields` remains intentionally open. The optional
+Project identity URL accepts canonical GitHub.com user or organization Project
+URLs. New version 2 item snapshots require `isArchived`; dependency snapshots
+require `blockedByIssues`.
+
+### Versioned schema migration
+
+Source 0.3.5 and earlier emitted a weak generic version 1 envelope whose payloads
+were not command-specific. The historical reader preserves that exact weak input
+contract, including old item snapshots without `isArchived` and dependency
+snapshots without `blockedByIssues`. It does not invent fields, relabel data, or
+certify legacy payloads as version 2.
+
+The generated schema assets are:
+
+- `command-receipt.schema.json`: strict producer version 2 success;
+- `error-receipt.schema.json`: strict producer version 2 error;
+- `command-receipt-v1.schema.json`: historical version 1 success input;
+- `error-receipt-v1.schema.json`: historical version 1 error input;
+- `versioned-command-receipt.schema.json`: explicit v1/v2 success reader;
+- `versioned-error-receipt.schema.json`: explicit v1/v2 error reader.
+
+Consumers that require version 1 must use the historical asset. Consumers that
+accept persisted mixed data use the versioned reader. The 0.4.0 producer never
+emits version 1 merely for an older consumer. Runtime Zod and generated Draft
+2020-12 acceptance are independently checked with Ajv.
 
 `dependency.add-blocker` resolves the requested blocker to its exact GitHub Issue
 database ID, canonical lower-case repository, and repository-scoped Issue
@@ -49,7 +104,8 @@ dependencies per relationship type and a list request capacity of 100. An
 over-limit response fails closed rather than triggering speculative pagination.
 
 Published JSON Schemas are generated under `schemas/` from the runtime Zod
-contracts, including `dependency-snapshot.schema.json`.
+contracts. Generated receipt assets distinguish current producer, historical
+version 1, and explicit versioned-reader contracts.
 
 Version 0.3.0 removes the `--issue-url` input accepted by version 0.2.1. This is
 an intentional breaking CLI change; receipt schema version 1 remains unchanged.
@@ -62,7 +118,9 @@ termination-aware. Source version 0.3.4 preserves the same public inputs and
 receipt shape while binding Project-item mutation evidence to validated target
 identity. Source version 0.3.5 preserves those inputs and the generic version-1
 envelope while adding required GitHub-sourced archivedness to every item
-snapshot.
+snapshot. Source version 0.4.0 preserves CLI syntax and operation behavior while
+making both producer envelopes strict version 2 contracts; the historical v1
+input contract remains separately available.
 
 ## Archive-complete item snapshots
 
@@ -94,12 +152,11 @@ active. Observed concurrent archiving rejects success after submission without
 rollback or automatic retry. GitHub's current mutation input has no atomic
 archivedness precondition, so an intermediate transition can escape observation.
 
-The required nested field is an additive JSON payload evolution and a strict
-snapshot-validation change. Historical `ItemSnapshot` JSON without
-`isArchived` does not validate against the 0.3.5 `ItemSnapshotSchema`. Existing
-generic version-1 receipt envelopes remain structurally compatible because
-`before` and `after` are still generic at that boundary. Command-discriminated
-receipt validation remains Issue #8 scope.
+The required nested field was an additive JSON payload evolution and a strict
+snapshot-validation change in 0.3.5. Historical `ItemSnapshot` JSON without
+`isArchived` does not validate against the current `ItemSnapshotSchema`, but it
+remains readable through the preserved weak version 1 receipt input contract.
+The strict version 2 producer requires the current nested snapshot.
 
 ## Observation-backed mutation semantics
 
@@ -156,8 +213,12 @@ missing or ambiguous identities, malformed GitHub responses, mutation failure,
 and postcondition mismatch fail closed. Diagnostics redact authorization
 headers, GitHub token forms, bearer values, and credential-bearing URLs.
 
-Error receipts retain schema version 1 and the existing `error.code` and
-`error.message` fields. Existing process codes remain compatible:
+New error receipts use strict schema version 2 while retaining the existing
+`error.code` and `error.message` meanings. `RECEIPT_VALIDATION_FAILED` identifies
+only a malformed candidate at the final success-output boundary. It emits no
+success line, exposes no raw candidate or unbounded validator diagnostics, and
+does not authorize retry or claim rollback. Existing process codes remain
+compatible:
 
 - `GH_START_FAILED` means launch failed before the child emitted `spawn`;
 - `GH_COMMAND_FAILED` means a normally closed invocation terminated

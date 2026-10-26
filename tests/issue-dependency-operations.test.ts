@@ -27,7 +27,6 @@ class QueuedExecutor {
 		return { stdout: stdout ?? "", stderr: "" };
 	};
 }
-
 const request = {
 	repository: "example/repository",
 	issueNumber: 42,
@@ -346,7 +345,7 @@ describe("IssueDependencyOperations", () => {
 		}
 	});
 
-	it("T14 validates the additive public snapshot and schemaVersion 1 receipt", () => {
+	it("T14 validates the public snapshot and strict producer v2 receipt", () => {
 		const snapshot = {
 			blockedBy: [41],
 			blockedByIssues: [{ id: 1001, repository: "example/repository", number: 41 }],
@@ -368,7 +367,7 @@ describe("IssueDependencyOperations", () => {
 			}),
 		);
 		const receipt = CommandReceiptSchema.parse({
-			schemaVersion: 1,
+			schemaVersion: 2,
 			command: "dependency.add-blocker",
 			outcome: "noop",
 			target: { repository: "example/repository", issueNumber: 42 },
@@ -377,7 +376,7 @@ describe("IssueDependencyOperations", () => {
 			after: snapshot,
 			postcondition: { verified: true, description: "exact identity exists" },
 		});
-		assert.equal(receipt.schemaVersion, 1);
+		assert.equal(receipt.schemaVersion, 2);
 	});
 
 	it("T15 keeps the generated dependency snapshot schema fresh", async () => {

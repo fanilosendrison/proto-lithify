@@ -1,94 +1,1562 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"type": "object",
-	"properties": {
-		"schemaVersion": {
-			"type": "number",
-			"const": 1
-		},
-		"command": {
-			"type": "string",
-			"minLength": 1
-		},
-		"outcome": {
-			"type": "string",
-			"enum": ["inspected", "applied", "noop"]
-		},
-		"target": {
-			"type": "object",
-			"propertyNames": {
-				"type": "string"
-			},
-			"additionalProperties": {
-				"anyOf": [
-					{
-						"type": "string"
-					},
-					{
-						"type": "number"
-					}
-				]
-			}
-		},
-		"request": {
-			"type": "object",
-			"propertyNames": {
-				"type": "string"
-			},
-			"additionalProperties": {
-				"anyOf": [
-					{
-						"type": "string"
-					},
-					{
-						"type": "number"
-					},
-					{
-						"type": "boolean"
-					}
-				]
-			}
-		},
-		"before": {
-			"anyOf": [
-				{},
-				{
-					"type": "null"
-				}
-			]
-		},
-		"after": {
-			"anyOf": [
-				{},
-				{
-					"type": "null"
-				}
-			]
-		},
-		"postcondition": {
+	"anyOf": [
+		{
 			"type": "object",
 			"properties": {
-				"verified": {
-					"type": "boolean"
+				"schemaVersion": {
+					"type": "number",
+					"const": 2
 				},
-				"description": {
+				"postcondition": {
+					"type": "object",
+					"properties": {
+						"verified": {
+							"type": "boolean",
+							"const": true
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["verified", "description"],
+					"additionalProperties": false
+				},
+				"command": {
 					"type": "string",
-					"minLength": 1
+					"const": "doctor"
+				},
+				"outcome": {
+					"type": "string",
+					"const": "inspected"
+				},
+				"target": {
+					"type": "object",
+					"properties": {},
+					"additionalProperties": false
+				},
+				"request": {
+					"type": "object",
+					"properties": {},
+					"additionalProperties": false
+				},
+				"before": {
+					"type": "null"
+				},
+				"after": {
+					"type": "object",
+					"properties": {
+						"ghVersion": {
+							"type": "string",
+							"minLength": 1
+						},
+						"authenticated": {
+							"type": "boolean",
+							"const": true
+						}
+					},
+					"required": ["ghVersion", "authenticated"],
+					"additionalProperties": false
 				}
 			},
-			"required": ["verified", "description"],
+			"required": [
+				"schemaVersion",
+				"postcondition",
+				"command",
+				"outcome",
+				"target",
+				"request",
+				"before",
+				"after"
+			],
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"schemaVersion": {
+					"type": "number",
+					"const": 2
+				},
+				"postcondition": {
+					"type": "object",
+					"properties": {
+						"verified": {
+							"type": "boolean",
+							"const": true
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["verified", "description"],
+					"additionalProperties": false
+				},
+				"command": {
+					"type": "string",
+					"const": "project.inspect"
+				},
+				"outcome": {
+					"type": "string",
+					"const": "inspected"
+				},
+				"target": {
+					"type": "object",
+					"properties": {
+						"projectOwner": {
+							"type": "string",
+							"minLength": 1
+						},
+						"projectNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["projectOwner", "projectNumber"],
+					"additionalProperties": false
+				},
+				"request": {
+					"type": "object",
+					"properties": {},
+					"additionalProperties": false
+				},
+				"before": {
+					"type": "null"
+				},
+				"after": {
+					"type": "object",
+					"properties": {
+						"project": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"owner": {
+									"type": "string",
+									"minLength": 1
+								},
+								"title": {
+									"type": "string",
+									"minLength": 1
+								},
+								"url": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
+								}
+							},
+							"required": ["id", "number", "owner", "title"],
+							"additionalProperties": false
+						},
+						"fields": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "string",
+										"minLength": 1
+									},
+									"name": {
+										"type": "string",
+										"minLength": 1
+									},
+									"type": {
+										"type": "string",
+										"minLength": 1
+									},
+									"options": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"properties": {
+												"id": {
+													"type": "string"
+												},
+												"name": {
+													"type": "string"
+												}
+											},
+											"required": ["id", "name"],
+											"additionalProperties": false
+										}
+									}
+								},
+								"required": ["id", "name", "type"],
+								"additionalProperties": false
+							}
+						},
+						"views": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"name": {
+										"type": "string",
+										"minLength": 1
+									},
+									"layout": {
+										"type": "string",
+										"minLength": 1
+									},
+									"filter": {
+										"type": "string"
+									}
+								},
+								"required": ["name", "layout", "filter"],
+								"additionalProperties": false
+							}
+						}
+					},
+					"required": ["project", "fields", "views"],
+					"additionalProperties": false
+				}
+			},
+			"required": [
+				"schemaVersion",
+				"postcondition",
+				"command",
+				"outcome",
+				"target",
+				"request",
+				"before",
+				"after"
+			],
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"schemaVersion": {
+					"type": "number",
+					"const": 2
+				},
+				"postcondition": {
+					"type": "object",
+					"properties": {
+						"verified": {
+							"type": "boolean",
+							"const": true
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["verified", "description"],
+					"additionalProperties": false
+				},
+				"command": {
+					"type": "string",
+					"const": "item.inspect"
+				},
+				"outcome": {
+					"type": "string",
+					"const": "inspected"
+				},
+				"target": {
+					"type": "object",
+					"properties": {
+						"projectOwner": {
+							"type": "string",
+							"minLength": 1
+						},
+						"projectNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						},
+						"repository": {
+							"type": "string",
+							"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+						},
+						"issueNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["projectOwner", "projectNumber", "repository", "issueNumber"],
+					"additionalProperties": false
+				},
+				"request": {
+					"type": "object",
+					"properties": {},
+					"additionalProperties": false
+				},
+				"before": {
+					"type": "null"
+				},
+				"after": {
+					"type": "object",
+					"properties": {
+						"project": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"owner": {
+									"type": "string",
+									"minLength": 1
+								},
+								"title": {
+									"type": "string",
+									"minLength": 1
+								},
+								"url": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
+								}
+							},
+							"required": ["id", "number", "owner", "title"],
+							"additionalProperties": false
+						},
+						"issue": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"repository": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+								}
+							},
+							"required": ["id", "number", "repository"],
+							"additionalProperties": false
+						},
+						"itemId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"isArchived": {
+							"type": "boolean"
+						},
+						"fields": {
+							"type": "object",
+							"propertyNames": {
+								"type": "string"
+							},
+							"additionalProperties": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					},
+					"required": ["project", "issue", "itemId", "isArchived", "fields"],
+					"additionalProperties": false
+				}
+			},
+			"required": [
+				"schemaVersion",
+				"postcondition",
+				"command",
+				"outcome",
+				"target",
+				"request",
+				"before",
+				"after"
+			],
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"schemaVersion": {
+					"type": "number",
+					"const": 2
+				},
+				"postcondition": {
+					"type": "object",
+					"properties": {
+						"verified": {
+							"type": "boolean",
+							"const": true
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["verified", "description"],
+					"additionalProperties": false
+				},
+				"command": {
+					"type": "string",
+					"const": "item.add"
+				},
+				"outcome": {
+					"type": "string",
+					"const": "noop"
+				},
+				"target": {
+					"type": "object",
+					"properties": {
+						"projectOwner": {
+							"type": "string",
+							"minLength": 1
+						},
+						"projectNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						},
+						"repository": {
+							"type": "string",
+							"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+						},
+						"issueNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["projectOwner", "projectNumber", "repository", "issueNumber"],
+					"additionalProperties": false
+				},
+				"request": {
+					"type": "object",
+					"properties": {
+						"issueUrl": {
+							"type": "string",
+							"pattern": "^https:\\/\\/github\\.com\\/(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}\\/issues\\/[1-9]\\d*$"
+						}
+					},
+					"required": ["issueUrl"],
+					"additionalProperties": false
+				},
+				"before": {
+					"type": "object",
+					"properties": {
+						"project": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"owner": {
+									"type": "string",
+									"minLength": 1
+								},
+								"title": {
+									"type": "string",
+									"minLength": 1
+								},
+								"url": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
+								}
+							},
+							"required": ["id", "number", "owner", "title"],
+							"additionalProperties": false
+						},
+						"issue": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"repository": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+								}
+							},
+							"required": ["id", "number", "repository"],
+							"additionalProperties": false
+						},
+						"itemId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"isArchived": {
+							"type": "boolean"
+						},
+						"fields": {
+							"type": "object",
+							"propertyNames": {
+								"type": "string"
+							},
+							"additionalProperties": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					},
+					"required": ["project", "issue", "itemId", "isArchived", "fields"],
+					"additionalProperties": false
+				},
+				"after": {
+					"type": "object",
+					"properties": {
+						"project": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"owner": {
+									"type": "string",
+									"minLength": 1
+								},
+								"title": {
+									"type": "string",
+									"minLength": 1
+								},
+								"url": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
+								}
+							},
+							"required": ["id", "number", "owner", "title"],
+							"additionalProperties": false
+						},
+						"issue": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"repository": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+								}
+							},
+							"required": ["id", "number", "repository"],
+							"additionalProperties": false
+						},
+						"itemId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"isArchived": {
+							"type": "boolean"
+						},
+						"fields": {
+							"type": "object",
+							"propertyNames": {
+								"type": "string"
+							},
+							"additionalProperties": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					},
+					"required": ["project", "issue", "itemId", "isArchived", "fields"],
+					"additionalProperties": false
+				}
+			},
+			"required": [
+				"schemaVersion",
+				"postcondition",
+				"command",
+				"outcome",
+				"target",
+				"request",
+				"before",
+				"after"
+			],
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"schemaVersion": {
+					"type": "number",
+					"const": 2
+				},
+				"postcondition": {
+					"type": "object",
+					"properties": {
+						"verified": {
+							"type": "boolean",
+							"const": true
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["verified", "description"],
+					"additionalProperties": false
+				},
+				"command": {
+					"type": "string",
+					"const": "item.add"
+				},
+				"outcome": {
+					"type": "string",
+					"const": "applied"
+				},
+				"target": {
+					"type": "object",
+					"properties": {
+						"projectOwner": {
+							"type": "string",
+							"minLength": 1
+						},
+						"projectNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						},
+						"repository": {
+							"type": "string",
+							"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+						},
+						"issueNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["projectOwner", "projectNumber", "repository", "issueNumber"],
+					"additionalProperties": false
+				},
+				"request": {
+					"type": "object",
+					"properties": {
+						"issueUrl": {
+							"type": "string",
+							"pattern": "^https:\\/\\/github\\.com\\/(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}\\/issues\\/[1-9]\\d*$"
+						}
+					},
+					"required": ["issueUrl"],
+					"additionalProperties": false
+				},
+				"before": {
+					"type": "null"
+				},
+				"after": {
+					"type": "object",
+					"properties": {
+						"project": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"owner": {
+									"type": "string",
+									"minLength": 1
+								},
+								"title": {
+									"type": "string",
+									"minLength": 1
+								},
+								"url": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
+								}
+							},
+							"required": ["id", "number", "owner", "title"],
+							"additionalProperties": false
+						},
+						"issue": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"repository": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+								}
+							},
+							"required": ["id", "number", "repository"],
+							"additionalProperties": false
+						},
+						"itemId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"isArchived": {
+							"type": "boolean"
+						},
+						"fields": {
+							"type": "object",
+							"propertyNames": {
+								"type": "string"
+							},
+							"additionalProperties": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					},
+					"required": ["project", "issue", "itemId", "isArchived", "fields"],
+					"additionalProperties": false
+				}
+			},
+			"required": [
+				"schemaVersion",
+				"postcondition",
+				"command",
+				"outcome",
+				"target",
+				"request",
+				"before",
+				"after"
+			],
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"schemaVersion": {
+					"type": "number",
+					"const": 2
+				},
+				"postcondition": {
+					"type": "object",
+					"properties": {
+						"verified": {
+							"type": "boolean",
+							"const": true
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["verified", "description"],
+					"additionalProperties": false
+				},
+				"command": {
+					"type": "string",
+					"const": "field.set"
+				},
+				"outcome": {
+					"type": "string",
+					"const": "noop"
+				},
+				"target": {
+					"type": "object",
+					"properties": {
+						"projectOwner": {
+							"type": "string",
+							"minLength": 1
+						},
+						"projectNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						},
+						"repository": {
+							"type": "string",
+							"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+						},
+						"issueNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["projectOwner", "projectNumber", "repository", "issueNumber"],
+					"additionalProperties": false
+				},
+				"request": {
+					"type": "object",
+					"properties": {
+						"fieldName": {
+							"type": "string",
+							"minLength": 1
+						},
+						"optionName": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["fieldName", "optionName"],
+					"additionalProperties": false
+				},
+				"before": {
+					"type": "object",
+					"properties": {
+						"project": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"owner": {
+									"type": "string",
+									"minLength": 1
+								},
+								"title": {
+									"type": "string",
+									"minLength": 1
+								},
+								"url": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
+								}
+							},
+							"required": ["id", "number", "owner", "title"],
+							"additionalProperties": false
+						},
+						"issue": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"repository": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+								}
+							},
+							"required": ["id", "number", "repository"],
+							"additionalProperties": false
+						},
+						"itemId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"isArchived": {
+							"type": "boolean"
+						},
+						"fields": {
+							"type": "object",
+							"propertyNames": {
+								"type": "string"
+							},
+							"additionalProperties": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					},
+					"required": ["project", "issue", "itemId", "isArchived", "fields"],
+					"additionalProperties": false
+				},
+				"after": {
+					"type": "object",
+					"properties": {
+						"project": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"owner": {
+									"type": "string",
+									"minLength": 1
+								},
+								"title": {
+									"type": "string",
+									"minLength": 1
+								},
+								"url": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
+								}
+							},
+							"required": ["id", "number", "owner", "title"],
+							"additionalProperties": false
+						},
+						"issue": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"repository": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+								}
+							},
+							"required": ["id", "number", "repository"],
+							"additionalProperties": false
+						},
+						"itemId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"isArchived": {
+							"type": "boolean"
+						},
+						"fields": {
+							"type": "object",
+							"propertyNames": {
+								"type": "string"
+							},
+							"additionalProperties": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					},
+					"required": ["project", "issue", "itemId", "isArchived", "fields"],
+					"additionalProperties": false
+				}
+			},
+			"required": [
+				"schemaVersion",
+				"postcondition",
+				"command",
+				"outcome",
+				"target",
+				"request",
+				"before",
+				"after"
+			],
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"schemaVersion": {
+					"type": "number",
+					"const": 2
+				},
+				"postcondition": {
+					"type": "object",
+					"properties": {
+						"verified": {
+							"type": "boolean",
+							"const": true
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["verified", "description"],
+					"additionalProperties": false
+				},
+				"command": {
+					"type": "string",
+					"const": "field.set"
+				},
+				"outcome": {
+					"type": "string",
+					"const": "applied"
+				},
+				"target": {
+					"type": "object",
+					"properties": {
+						"projectOwner": {
+							"type": "string",
+							"minLength": 1
+						},
+						"projectNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						},
+						"repository": {
+							"type": "string",
+							"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+						},
+						"issueNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["projectOwner", "projectNumber", "repository", "issueNumber"],
+					"additionalProperties": false
+				},
+				"request": {
+					"type": "object",
+					"properties": {
+						"fieldName": {
+							"type": "string",
+							"minLength": 1
+						},
+						"optionName": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["fieldName", "optionName"],
+					"additionalProperties": false
+				},
+				"before": {
+					"type": "object",
+					"properties": {
+						"project": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"owner": {
+									"type": "string",
+									"minLength": 1
+								},
+								"title": {
+									"type": "string",
+									"minLength": 1
+								},
+								"url": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
+								}
+							},
+							"required": ["id", "number", "owner", "title"],
+							"additionalProperties": false
+						},
+						"issue": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"repository": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+								}
+							},
+							"required": ["id", "number", "repository"],
+							"additionalProperties": false
+						},
+						"itemId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"isArchived": {
+							"type": "boolean"
+						},
+						"fields": {
+							"type": "object",
+							"propertyNames": {
+								"type": "string"
+							},
+							"additionalProperties": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					},
+					"required": ["project", "issue", "itemId", "isArchived", "fields"],
+					"additionalProperties": false
+				},
+				"after": {
+					"type": "object",
+					"properties": {
+						"project": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"owner": {
+									"type": "string",
+									"minLength": 1
+								},
+								"title": {
+									"type": "string",
+									"minLength": 1
+								},
+								"url": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
+								}
+							},
+							"required": ["id", "number", "owner", "title"],
+							"additionalProperties": false
+						},
+						"issue": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string",
+									"minLength": 1
+								},
+								"number": {
+									"type": "integer",
+									"exclusiveMinimum": 0,
+									"maximum": 9007199254740991
+								},
+								"repository": {
+									"type": "string",
+									"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+								}
+							},
+							"required": ["id", "number", "repository"],
+							"additionalProperties": false
+						},
+						"itemId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"isArchived": {
+							"type": "boolean"
+						},
+						"fields": {
+							"type": "object",
+							"propertyNames": {
+								"type": "string"
+							},
+							"additionalProperties": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					},
+					"required": ["project", "issue", "itemId", "isArchived", "fields"],
+					"additionalProperties": false
+				}
+			},
+			"required": [
+				"schemaVersion",
+				"postcondition",
+				"command",
+				"outcome",
+				"target",
+				"request",
+				"before",
+				"after"
+			],
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"schemaVersion": {
+					"type": "number",
+					"const": 2
+				},
+				"postcondition": {
+					"type": "object",
+					"properties": {
+						"verified": {
+							"type": "boolean",
+							"const": true
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["verified", "description"],
+					"additionalProperties": false
+				},
+				"command": {
+					"type": "string",
+					"const": "dependency.add-blocker"
+				},
+				"outcome": {
+					"type": "string",
+					"const": "noop"
+				},
+				"target": {
+					"type": "object",
+					"properties": {
+						"repository": {
+							"type": "string",
+							"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+						},
+						"issueNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["repository", "issueNumber"],
+					"additionalProperties": false
+				},
+				"request": {
+					"type": "object",
+					"properties": {
+						"blockerNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["blockerNumber"],
+					"additionalProperties": false
+				},
+				"before": {
+					"type": "object",
+					"properties": {
+						"blockedBy": {
+							"type": "array",
+							"items": {
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"maximum": 9007199254740991
+							}
+						},
+						"blockedByIssues": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "integer",
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991
+									},
+									"repository": {
+										"type": "string",
+										"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+									},
+									"number": {
+										"type": "integer",
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991
+									}
+								},
+								"required": ["id", "repository", "number"],
+								"additionalProperties": false
+							}
+						}
+					},
+					"required": ["blockedBy", "blockedByIssues"],
+					"additionalProperties": false
+				},
+				"after": {
+					"type": "object",
+					"properties": {
+						"blockedBy": {
+							"type": "array",
+							"items": {
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"maximum": 9007199254740991
+							}
+						},
+						"blockedByIssues": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "integer",
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991
+									},
+									"repository": {
+										"type": "string",
+										"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+									},
+									"number": {
+										"type": "integer",
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991
+									}
+								},
+								"required": ["id", "repository", "number"],
+								"additionalProperties": false
+							}
+						}
+					},
+					"required": ["blockedBy", "blockedByIssues"],
+					"additionalProperties": false
+				}
+			},
+			"required": [
+				"schemaVersion",
+				"postcondition",
+				"command",
+				"outcome",
+				"target",
+				"request",
+				"before",
+				"after"
+			],
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"schemaVersion": {
+					"type": "number",
+					"const": 2
+				},
+				"postcondition": {
+					"type": "object",
+					"properties": {
+						"verified": {
+							"type": "boolean",
+							"const": true
+						},
+						"description": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"required": ["verified", "description"],
+					"additionalProperties": false
+				},
+				"command": {
+					"type": "string",
+					"const": "dependency.add-blocker"
+				},
+				"outcome": {
+					"type": "string",
+					"const": "applied"
+				},
+				"target": {
+					"type": "object",
+					"properties": {
+						"repository": {
+							"type": "string",
+							"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+						},
+						"issueNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["repository", "issueNumber"],
+					"additionalProperties": false
+				},
+				"request": {
+					"type": "object",
+					"properties": {
+						"blockerNumber": {
+							"type": "integer",
+							"exclusiveMinimum": 0,
+							"maximum": 9007199254740991
+						}
+					},
+					"required": ["blockerNumber"],
+					"additionalProperties": false
+				},
+				"before": {
+					"type": "object",
+					"properties": {
+						"blockedBy": {
+							"type": "array",
+							"items": {
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"maximum": 9007199254740991
+							}
+						},
+						"blockedByIssues": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "integer",
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991
+									},
+									"repository": {
+										"type": "string",
+										"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+									},
+									"number": {
+										"type": "integer",
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991
+									}
+								},
+								"required": ["id", "repository", "number"],
+								"additionalProperties": false
+							}
+						}
+					},
+					"required": ["blockedBy", "blockedByIssues"],
+					"additionalProperties": false
+				},
+				"after": {
+					"type": "object",
+					"properties": {
+						"blockedBy": {
+							"type": "array",
+							"items": {
+								"type": "integer",
+								"exclusiveMinimum": 0,
+								"maximum": 9007199254740991
+							}
+						},
+						"blockedByIssues": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "integer",
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991
+									},
+									"repository": {
+										"type": "string",
+										"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
+									},
+									"number": {
+										"type": "integer",
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991
+									}
+								},
+								"required": ["id", "repository", "number"],
+								"additionalProperties": false
+							}
+						}
+					},
+					"required": ["blockedBy", "blockedByIssues"],
+					"additionalProperties": false
+				}
+			},
+			"required": [
+				"schemaVersion",
+				"postcondition",
+				"command",
+				"outcome",
+				"target",
+				"request",
+				"before",
+				"after"
+			],
 			"additionalProperties": false
 		}
-	},
-	"required": [
-		"schemaVersion",
-		"command",
-		"outcome",
-		"target",
-		"request",
-		"before",
-		"after",
-		"postcondition"
-	],
-	"additionalProperties": false
+	]
 }

@@ -24,7 +24,7 @@
 				},
 				"url": {
 					"type": "string",
-					"format": "uri"
+					"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])https:\\/\\/github\\.com\\/(?:users|orgs)\\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/projects\\/[1-9]\\d*$"
 				}
 			},
 			"required": ["id", "number", "owner", "title"],
@@ -44,7 +44,7 @@
 				},
 				"repository": {
 					"type": "string",
-					"pattern": "^[^/]+\\/[^/]+$"
+					"pattern": "^(?![\\s\\S]*[\\r\\n\\u2028\\u2029])[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?\\/[A-Za-z0-9._-]{1,100}$"
 				}
 			},
 			"required": ["id", "number", "repository"],
