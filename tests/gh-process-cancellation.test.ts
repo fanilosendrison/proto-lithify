@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
+import { type ChildProcessByStdio, spawn } from "node:child_process";
+import { EventEmitter, once } from "node:events";
 import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { Readable } from "node:stream";
 import { afterEach, describe, it } from "node:test";
-import { GhExecutionError, runGh } from "../src/github/gh-process.ts";
+import {
+	GhExecutionError,
+	runGh,
+	runGhWithProcessSpawnerForTest,
+} from "../src/github/gh-process.ts";
+import type { GhRunOptions } from "../src/github/types.ts";
 
 const temporaryDirectories: string[] = [];
 
@@ -23,6 +31,104 @@ async function installShellFakeGh(source: string): Promise<string> {
 	await writeFile(executable, `#!/bin/sh\n${source}\n`);
 	await chmod(executable, 0o755);
 	return directory;
+}
+
+type TaskOwnedChild = ChildProcessByStdio<null, Readable, Readable>;
+
+class ReadinessGatedChild extends EventEmitter {
+	readonly stdout: Readable;
+	readonly stderr: Readable;
+	readonly #child: TaskOwnedChild;
+
+	constructor(child: TaskOwnedChild, readinessMarker: string) {
+		super();
+		this.#child = child;
+		this.stdout = child.stdout;
+		this.stderr = child.stderr;
+		let observedOutput = "";
+		const observeReadiness = (chunk: Buffer): void => {
+			observedOutput += chunk.toString("utf8");
+			if (!observedOutput.includes(readinessMarker)) return;
+			child.stdout.off("data", observeReadiness);
+			this.emit("spawn");
+		};
+		child.stdout.on("data", observeReadiness);
+		child.on("error", (error) => this.emit("error", error));
+		child.on("exit", (code, signal) => this.emit("exit", code, signal));
+		child.on("close", (code, signal) => this.emit("close", code, signal));
+	}
+
+	kill(signal: NodeJS.Signals): boolean {
+		return this.#child.kill(signal);
+	}
+
+	unref(): this {
+		this.#child.unref();
+		return this;
+	}
+
+	asChildProcess(): TaskOwnedChild {
+		return this as unknown as TaskOwnedChild;
+	}
+}
+
+function runGhWithTaskOwnedChild(
+	args: readonly string[],
+	options: GhRunOptions,
+): { readonly child: TaskOwnedChild; readonly promise: ReturnType<typeof runGh> } {
+	let child: TaskOwnedChild | undefined;
+	const promise = runGhWithProcessSpawnerForTest(
+		args,
+		options,
+		(command, commandArgs, spawnOptions) => {
+			child = spawn(command, commandArgs, {
+				env: spawnOptions.env,
+				shell: false,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			return new ReadinessGatedChild(child, "fixture-ready\n").asChildProcess();
+		},
+	);
+	if (!child) throw new Error("task-owned child was not spawned synchronously");
+	return { child, promise };
+}
+
+async function stopTaskOwnedChild(child: TaskOwnedChild): Promise<void> {
+	if (child.exitCode !== null || child.signalCode !== null) return;
+	const exited = once(child, "exit");
+	assert.equal(child.kill("SIGKILL"), true, "task-owned child rejected cleanup");
+	await exited;
+}
+
+async function assertRealTimeoutOutcome(
+	error: GhExecutionError,
+	child: TaskOwnedChild,
+	marker: string,
+	confirmedMarker: string,
+): Promise<void> {
+	assert.doesNotMatch(error.message, /rollback|not applied|cancelled remotely/i);
+	switch (error.code) {
+		case "GH_TIMEOUT": {
+			const contentAtReturn = await readFile(marker, "utf8");
+			await new Promise((resolve) => setImmediate(resolve));
+			assert.equal(await readFile(marker, "utf8"), contentAtReturn);
+			assert.equal(contentAtReturn, confirmedMarker);
+			assert.notEqual(child.exitCode ?? child.signalCode, null);
+			break;
+		}
+		case "GH_TERMINATION_UNCONFIRMED":
+			assert.match(error.message, /termination was not confirmed/);
+			assert.match(error.message, /may still be running/);
+			await stopTaskOwnedChild(child);
+			break;
+		case "GH_STREAM_CLOSURE_UNCONFIRMED":
+			assert.match(error.message, /direct child exited/);
+			assert.match(error.message, /closure was not confirmed/);
+			assert.notEqual(child.exitCode ?? child.signalCode, null);
+			break;
+		default:
+			assert.fail(`unexpected real-process classification: ${error.code}`);
+	}
 }
 
 function environment(
@@ -55,44 +161,63 @@ afterEach(async () => {
 });
 
 describe("runGh cancellation with real child processes", () => {
-	it("reports a graceful timeout only after exit and close", async () => {
-		const directory = await installShellFakeGh(`
-			trap 'printf "exit\\n" >> "$SENTINEL"' EXIT
-			trap 'printf "term\\n" >> "$SENTINEL"; exit 0' TERM
-			printf "ready\\n" >> "$SENTINEL"
-			while :; do :; done
+	it("reports truthful graceful-timeout outcomes from a real child", async () => {
+		const directory = await installFakeGh(`
+			const fs = require("node:fs");
+			const idle = setInterval(() => {}, 60_000);
+			fs.appendFileSync(process.env.SENTINEL, "ready\\n");
+			process.on("exit", () => fs.appendFileSync(process.env.SENTINEL, "exit\\n"));
+			process.on("SIGTERM", () => {
+				fs.appendFileSync(process.env.SENTINEL, "term\\n");
+				clearInterval(idle);
+				process.exit(0);
+			});
+			process.stdout.write("fixture-ready\\n");
 		`);
 		const sentinel = path.join(directory, "sentinel");
-		const error = await executionError(
-			runGh([], {
-				env: environment(directory, { SENTINEL: sentinel }),
-				timeoutMilliseconds: 1_000,
-				terminationGraceMilliseconds: 200,
-			}),
-		);
-		assert.equal(error.code, "GH_TIMEOUT");
-		const contentAtReturn = await readFile(sentinel, "utf8");
-		await new Promise((resolve) => setTimeout(resolve, 40));
-		assert.equal(await readFile(sentinel, "utf8"), contentAtReturn);
-		assert.match(contentAtReturn, /ready\nterm\nexit\n/);
+		const invocation = runGhWithTaskOwnedChild([], {
+			env: environment(directory, { SENTINEL: sentinel }),
+			timeoutMilliseconds: 1_000,
+		});
+		try {
+			const error = await executionError(invocation.promise);
+			await assertRealTimeoutOutcome(
+				error,
+				invocation.child,
+				sentinel,
+				"ready\nterm\nexit\n",
+			);
+		} finally {
+			await stopTaskOwnedChild(invocation.child);
+		}
 	});
 
-	it("escalates a non-terminating SIGTERM handler to SIGKILL", async () => {
-		const directory = await installShellFakeGh(`
-			trap 'printf received > "$TERM_MARKER"' TERM
-			while :; do :; done
+	it("reports truthful SIGKILL-escalation outcomes from a real child", async () => {
+		const directory = await installFakeGh(`
+			const fs = require("node:fs");
+			fs.writeFileSync(process.env.TERM_MARKER, "ready\\n");
+			process.on("SIGTERM", () => {
+				fs.appendFileSync(process.env.TERM_MARKER, "received\\n");
+			});
+			setInterval(() => {}, 60_000);
+			process.stdout.write("fixture-ready\\n");
 		`);
 		const marker = path.join(directory, "term-marker");
-		const error = await executionError(
-			runGh([], {
-				env: environment(directory, { TERM_MARKER: marker }),
-				timeoutMilliseconds: 1_000,
-				terminationGraceMilliseconds: 30,
-				killConfirmationMilliseconds: 200,
-			}),
-		);
-		assert.equal(error.code, "GH_TIMEOUT");
-		assert.equal(await readFile(marker, "utf8"), "received");
+		const invocation = runGhWithTaskOwnedChild([], {
+			env: environment(directory, { TERM_MARKER: marker }),
+			timeoutMilliseconds: 1_000,
+		});
+		try {
+			const error = await executionError(invocation.promise);
+			await assertRealTimeoutOutcome(
+				error,
+				invocation.child,
+				marker,
+				"ready\nreceived\n",
+			);
+		} finally {
+			await stopTaskOwnedChild(invocation.child);
+		}
 	});
 
 	it("aggregates interleaved stdout and stderr for output cancellation", async () => {

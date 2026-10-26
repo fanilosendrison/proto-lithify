@@ -104,35 +104,119 @@ describe("runGh injected process-control races", () => {
 		assert.equal(child.unrefCalls, 0);
 	});
 
-	it("does not escalate when the direct child exits during grace", async () => {
+	it("confirms graceful SIGTERM only after exit and close", async () => {
 		const child = new FakeChild();
-		child.killBehavior = () => {
-			setTimeout(() => closeAfterSignal(child), 5);
+		let settlements = 0;
+		let settlementsBeforeExit = -1;
+		let settlementsBeforeClose = -1;
+		const events: string[] = [];
+		child.killBehavior = (signal) => {
+			events.push(signal);
+			queueMicrotask(() => {
+				settlementsBeforeExit = settlements;
+				events.push("exit");
+				child.emit("exit", 0, null);
+				queueMicrotask(() => {
+					settlementsBeforeClose = settlements;
+					events.push("close");
+					child.emit("close", 0, null);
+				});
+			});
 			return true;
 		};
-		const error = await executionError(
-			injectedRun(child, {
-				timeoutMilliseconds: 0,
-				terminationGraceMilliseconds: 50,
-			}),
+		const observed = injectedRun(child, {
+			timeoutMilliseconds: 0,
+			terminationGraceMilliseconds: 0,
+		}).then(
+			(result) => {
+				settlements += 1;
+				return result;
+			},
+			(error: unknown) => {
+				settlements += 1;
+				throw error;
+			},
 		);
+		const error = await executionError(observed);
+		await new Promise((resolve) => setImmediate(resolve));
 		assert.equal(error.code, "GH_TIMEOUT");
+		assert.deepEqual(events, ["SIGTERM", "exit", "close"]);
 		assert.deepEqual(child.signals, ["SIGTERM"]);
+		assert.equal(settlementsBeforeExit, 0);
+		assert.equal(settlementsBeforeClose, 0);
+		assert.equal(settlements, 1);
+		assert.equal(child.unrefCalls, 0);
+	});
+
+	it("confirms SIGKILL escalation only after injected exit and close", async () => {
+		const child = new FakeChild();
+		let settlements = 0;
+		let settlementsBeforeExit = -1;
+		let settlementsBeforeClose = -1;
+		const events: string[] = [];
+		child.killBehavior = (signal) => {
+			events.push(signal);
+			if (signal === "SIGKILL") {
+				queueMicrotask(() => {
+					settlementsBeforeExit = settlements;
+					events.push("exit");
+					child.emit("exit", null, "SIGKILL");
+					queueMicrotask(() => {
+						settlementsBeforeClose = settlements;
+						events.push("close");
+						child.emit("close", null, "SIGKILL");
+					});
+				});
+			}
+			return true;
+		};
+		const observed = injectedRun(child, {
+			timeoutMilliseconds: 0,
+			terminationGraceMilliseconds: 0,
+			killConfirmationMilliseconds: 20,
+		}).then(
+			(result) => {
+				settlements += 1;
+				return result;
+			},
+			(error: unknown) => {
+				settlements += 1;
+				throw error;
+			},
+		);
+		const error = await executionError(observed);
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(error.code, "GH_TIMEOUT");
+		assert.deepEqual(events, ["SIGTERM", "SIGKILL", "exit", "close"]);
+		assert.deepEqual(child.signals, ["SIGTERM", "SIGKILL"]);
+		assert.equal(settlementsBeforeExit, 0);
+		assert.equal(settlementsBeforeClose, 0);
+		assert.equal(settlements, 1);
+		assert.equal(child.unrefCalls, 0);
 	});
 
 	it("bounds signal failures and unreferences only an unconfirmed child", async () => {
 		const child = new FakeChild();
 		const secret = "ghp_abcdefghijklmnopqrstuvwxyz123456";
+		let settlements = 0;
 		child.killBehavior = () => {
 			throw new Error(`signal denied ${secret} ${"x".repeat(10_000)}`);
 		};
-		const error = await executionError(
-			injectedRun(child, {
-				timeoutMilliseconds: 0,
-				terminationGraceMilliseconds: 5,
-				killConfirmationMilliseconds: 5,
-			}),
+		const observed = injectedRun(child, {
+			timeoutMilliseconds: 0,
+			terminationGraceMilliseconds: 5,
+			killConfirmationMilliseconds: 5,
+		}).then(
+			(result) => {
+				settlements += 1;
+				return result;
+			},
+			(error: unknown) => {
+				settlements += 1;
+				throw error;
+			},
 		);
+		const error = await executionError(observed);
 		assert.equal(error.code, "GH_TERMINATION_UNCONFIRMED");
 		assert.match(error.message, /may still be running/);
 		assert.doesNotMatch(error.message, /ghp_/);
@@ -141,7 +225,12 @@ describe("runGh injected process-control races", () => {
 		assert.equal(child.unrefCalls, 1);
 		assert.equal(child.stdout.destroyed, true);
 		assert.equal(child.stderr.destroyed, true);
+		assert.equal(settlements, 1);
+		child.emit("exit", null, "SIGKILL");
+		child.emit("close", null, "SIGKILL");
 		child.emit("error", new Error("late harmless error"));
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(settlements, 1);
 	});
 
 	it("does not signal or unref after exit when stream closure is unconfirmed", async () => {
