@@ -105,7 +105,7 @@ async function assertRealTimeoutOutcome(
 	child: TaskOwnedChild,
 	marker: string,
 	confirmedMarker: string,
-): Promise<void> {
+): Promise<string> {
 	assert.doesNotMatch(error.message, /rollback|not applied|cancelled remotely/i);
 	switch (error.code) {
 		case "GH_TIMEOUT": {
@@ -129,6 +129,7 @@ async function assertRealTimeoutOutcome(
 		default:
 			assert.fail(`unexpected real-process classification: ${error.code}`);
 	}
+	return error.code;
 }
 
 function environment(
@@ -181,12 +182,13 @@ describe("runGh cancellation with real child processes", () => {
 		});
 		try {
 			const error = await executionError(invocation.promise);
-			await assertRealTimeoutOutcome(
+			const classification = await assertRealTimeoutOutcome(
 				error,
 				invocation.child,
 				sentinel,
 				"ready\nterm\nexit\n",
 			);
+			assert.equal(classification, "GH_TIMEOUT");
 		} finally {
 			await stopTaskOwnedChild(invocation.child);
 		}
@@ -209,12 +211,13 @@ describe("runGh cancellation with real child processes", () => {
 		});
 		try {
 			const error = await executionError(invocation.promise);
-			await assertRealTimeoutOutcome(
+			const classification = await assertRealTimeoutOutcome(
 				error,
 				invocation.child,
 				marker,
 				"ready\nreceived\n",
 			);
+			assert.equal(classification, "GH_TIMEOUT");
 		} finally {
 			await stopTaskOwnedChild(invocation.child);
 		}
