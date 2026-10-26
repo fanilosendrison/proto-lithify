@@ -4,7 +4,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { z } from "zod";
-import { CommandReceiptSchema, ItemSnapshotSchema } from "../src/receipts/schemas.ts";
+import {
+	ItemSnapshotSchema,
+	LegacyCommandReceiptV1Schema,
+} from "../src/receipts/schemas.ts";
 
 const historicalSnapshot = {
 	project: { id: "PVT_project", number: 3, owner: "example", title: "Engineering" },
@@ -29,7 +32,7 @@ describe("ItemSnapshot archived-state schema", () => {
 	});
 
 	it("T22 keeps the generic v1 envelope compatible with historical payloads", () => {
-		const receipt = CommandReceiptSchema.parse({
+		const receipt = LegacyCommandReceiptV1Schema.parse({
 			schemaVersion: 1,
 			command: "item.inspect",
 			outcome: "inspected",

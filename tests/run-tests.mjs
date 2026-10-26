@@ -15,6 +15,11 @@ const testFiles = [
 	"tests/project-operations.test.ts",
 	"tests/project-concurrency.test.ts",
 	"tests/item-snapshot-schema.test.ts",
+	"tests/receipt-v2-valid.test.ts",
+	"tests/receipt-v2-invalid.test.ts",
+	"tests/receipt-legacy.test.ts",
+	"tests/receipt-json-schema-parity.test.ts",
+	"tests/receipt-output.test.ts",
 	"tests/cli.test.ts",
 	"tests/installation.test.ts",
 ].map((file) => path.join(repositoryRoot, file));

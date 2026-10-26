@@ -116,7 +116,7 @@ describe("CLI", () => {
 		const result = runCli(["doctor"]);
 		assert.strictEqual(result.status, 0, result.stderr);
 		const receipt = JSON.parse(result.stdout);
-		assert.strictEqual(receipt.schemaVersion, 1);
+		assert.strictEqual(receipt.schemaVersion, 2);
 		assert.strictEqual(receipt.command, "doctor");
 		assert.strictEqual(receipt.outcome, "inspected");
 		assert.match(receipt.after.ghVersion, /^gh version 2\.32\.1/);
