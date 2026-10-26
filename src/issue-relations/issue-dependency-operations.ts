@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { splitGitHubRepository } from "../github/issue-identity.ts";
+import { githubRestArgs } from "../github/rest-api.ts";
 import type { GhExecutor } from "../github/types.ts";
 import {
 	type CommandReceipt,
@@ -66,14 +67,15 @@ export class IssueDependencyOperations {
 			});
 		}
 
-		await this.execute([
-			"api",
-			"--method",
-			"POST",
-			`repos/${repository}/issues/${request.issueNumber}/dependencies/blocked_by`,
-			"-F",
-			`issue_id=${blocker.id}`,
-		]);
+		await this.execute(
+			githubRestArgs([
+				"--method",
+				"POST",
+				`repos/${repository}/issues/${request.issueNumber}/dependencies/blocked_by`,
+				"-F",
+				`issue_id=${blocker.id}`,
+			]),
+		);
 		let after: DependencySnapshot;
 		try {
 			after = await this.inspect(repository, request.issueNumber);
@@ -105,10 +107,11 @@ export class IssueDependencyOperations {
 	async inspect(repository: string, issueNumber: number): Promise<DependencySnapshot> {
 		const canonicalTarget = canonicalRepository(repository);
 		validatePositiveSafeInteger(issueNumber, "Issue number");
-		const result = await this.execute([
-			"api",
-			`repos/${canonicalTarget}/issues/${issueNumber}/dependencies/blocked_by?per_page=100`,
-		]);
+		const result = await this.execute(
+			githubRestArgs([
+				`repos/${canonicalTarget}/issues/${issueNumber}/dependencies/blocked_by?per_page=100`,
+			]),
+		);
 		const value: unknown = JSON.parse(result.stdout);
 		if (!Array.isArray(value)) {
 			throw new Error("GitHub blocked-by response must be an array");
@@ -134,10 +137,9 @@ export class IssueDependencyOperations {
 		repository: string,
 		issueNumber: number,
 	): Promise<DependencyBlocker> {
-		const result = await this.execute([
-			"api",
-			`repos/${repository}/issues/${issueNumber}`,
-		]);
+		const result = await this.execute(
+			githubRestArgs([`repos/${repository}/issues/${issueNumber}`]),
+		);
 		return parseRestIssueIdentity(JSON.parse(result.stdout));
 	}
 }
