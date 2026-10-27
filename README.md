@@ -19,6 +19,11 @@ It does not decide workflow status, priority, readiness, Issue scope, or product
 semantics. Those decisions remain with the invoking agent policy and the target
 repository's Engineering Project profile.
 
+Repository Issue, Project, backlog, and finding work follows the
+[Proto-Lithify Engineering Project governance profile](docs/repository-governance/proto-lithify-engineering.md)
+and the shared GitHub Engineering Projects operational protocol. This profile
+governs agents managing this repository; the Proto-Lithify CLI does not parse it.
+
 ## Requirements
 
 - Node.js 22.19.0 or newer

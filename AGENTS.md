@@ -26,6 +26,20 @@ finding.
 Do not parse repository Markdown profiles. Callers must pass exact routing,
 field, option, Issue, and relationship inputs.
 
+## GitHub Engineering Project
+
+- For all Issue, Project, backlog, finding, or agent-queue work, apply the shared
+  GitHub Engineering Projects operational protocol and the
+  [Proto-Lithify Engineering Project governance profile](docs/repository-governance/proto-lithify-engineering.md).
+- Resolve unqualified Issue numbers against `fanilosendrison/proto-lithify`.
+- Read current fields, relationships, and memberships from GitHub before
+  changing operational state.
+- Keep GitHub as the source of truth for operational state.
+- Never duplicate live operational state in repository documentation.
+- Keep business decisions in governance rules and the invoking agent.
+- Never ask the Proto-Lithify CLI to infer status, priority, blocking, or work
+  authorization.
+
 ## Runtime requirements
 
 - Require Node.js 22.19.0 or newer and pnpm 11.24.0 for development.
