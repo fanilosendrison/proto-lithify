@@ -10,10 +10,11 @@ version: "0.4.2"
 
 # Proto-Lithify
 
-`proto-lithify` is a mechanical GitHub Project V2 adapter for
-coding-agent workflows. It discovers live GitHub identities, performs explicit
-Project mutations, verifies postconditions from both Issue and Project
-membership projections, and emits versioned JSON receipts.
+`proto-lithify` is a concrete GitHub prototype and empirical investigation
+ground for agent-assisted engineering work. Its current implementation is a
+mechanical GitHub Project V2 adapter: it discovers live GitHub identities,
+performs explicit Project and Issue-relationship mutations, verifies bounded
+postconditions, and emits versioned JSON receipts.
 
 It does not decide workflow status, priority, readiness, Issue scope, or product
 semantics. Those decisions remain with the invoking agent policy and the target
@@ -23,6 +24,18 @@ Repository Issue, Project, backlog, and finding work follows the
 [Proto-Lithify Engineering Project governance profile](docs/repository-governance/proto-lithify-engineering.md)
 and the shared GitHub Engineering Projects operational protocol. This profile
 governs agents managing this repository; the Proto-Lithify CLI does not parse it.
+
+## Empirical role and relationship to Lithify
+
+The [empirical charter](docs/research/empirical-role-and-evidence.md) separates
+observed work practices, proposed experiments, implemented capabilities, and
+qualified evidence. Work-record investigations do not imply that the current
+CLI already publishes or retrieves those records.
+
+Lithify is derived independently from its accepted Product Intent. This
+prototype is an evidence source for later confrontation, not its mandatory
+architecture or a normative reference implementation. Calling systems retain
+semantic workflow policy.
 
 ## Requirements
 
