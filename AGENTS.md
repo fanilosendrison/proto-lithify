@@ -16,6 +16,25 @@ operations for coding-agent workflows. Keep GitHub as the durable workflow-state
 owner, repository profiles as local policy adapters, and dotagents as the owner
 of agent decisions.
 
+## Empirical role and Lithify boundary
+
+Apply `docs/research/empirical-role-and-evidence.md` when describing the
+prototype's role, conducting research, or preparing an evidence handoff. That
+charter governs research framing; it does not override the CLI contract,
+architecture, installation guarantees, or existing implementation guardrails.
+
+Distinguish current implemented capabilities from proposed experiments and
+qualified results. Do not add runtime operations or alter caller-policy
+ownership merely because an observed workflow suggests them.
+
+Do not use Proto-Lithify, GitHub object mappings, or observed agent practices as
+normative premises for Lithify derivation. Preserve evidence limitations and
+negative results. Recommendations do not constitute adoption by Lithify.
+
+Do not amend Lithify authority from a Proto-Lithify task without a separate,
+explicit mandate for the exact product-side change. Keep live Project state
+and native work relationships on their existing canonical surfaces.
+
 ## Authority boundary
 
 The CLI may inspect GitHub state, resolve live identities, apply an explicitly
