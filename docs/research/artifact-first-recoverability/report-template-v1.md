@@ -81,6 +81,20 @@ executing agent; do not infer unpublished prompts from diffs.>
 
 <Published decisions, corrections, review findings and cross-execution information.>
 
+## Empirical extraction from observed engineering practice
+
+<Record only practices actually encountered while reconstructing D01–D10
+within this case's authorized surfaces. For every material observation, cite
+the exact artifact/record identity and source URL, what participants did,
+what worked or impeded recovery, and the limits of the evidence. Explicitly
+retain unexpected findings, negative cases, contradictory evidence, repeated
+manual effort, missing links, and alternative arrangements when observed.
+
+Distinguish directly observed practice from an interpretation or a tentative
+candidate mechanism. Candidates are non-normative research hypotheses,
+not accepted Proto-Lithify capabilities, Lithify requirements, or a selected
+architecture. Do not infer missing private conversations or expand case scope.>
+
 ## GitHub Project observations
 
 <Public Project state and native relationships, exact identities, observation
@@ -134,7 +148,10 @@ apply the protocol's mechanically checkable evaluation rules.>
 
 ## Bounded conclusion
 
-<What the case evidence establishes and does not establish. Candidate
+<What the case evidence establishes and does not establish.
+State separately which observations about actual engineering practice merit
+retention, which candidate mechanisms remain hypotheses, and which findings
+would still matter even without adoption by Lithify. Candidate
 improvements are not accepted requirements. No architecture adoption, amendment
 of Lithify Product Intent, new CLI capability, universal reliability, or historical
 completeness follows. The later six-case synthesis is diagnostic, not representative;

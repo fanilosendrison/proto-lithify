@@ -71,6 +71,34 @@ Information available to a later autonomous agent
 Every arrow represents a relationship to investigate, not a relationship assumed
 to exist.
 
+## Empirical research purpose and extraction
+
+This is an empirical investigation of actual agent-assisted engineering
+practices in Proto-Lithify's research remit. Artifact-first recovery is the
+fixed observational lens for these six cases, not a hypothesis that Lithify's
+requirements have been satisfied or violated, an assumed ideal workflow, or a
+predetermined mechanism to implement.
+
+While reconstructing D01–D10, preserve source-grounded observations of what
+the engineering participants actually did: effective practices, missing or
+ambiguous links, repeated or unnecessary manual effort, corrective work,
+unexpected useful arrangements, contradictory cases, and failure modes.
+Record the exact supporting identity or URL, observation boundary, and
+limitation for each material claim. Do not convert a participant's statement
+into independent proof of its substantive truth.
+
+Distinguish observations from explanations, hypotheses and candidate
+mechanisms. Candidates are non-normative and may be retained or rejected as
+Proto-Lithify research findings irrespective of any later Lithify adoption
+decision. Do not filter out unexpected findings simply because they are not
+covered by Lithify Product Intent.
+
+Extraction is confined to evidence encountered within the existing six frozen
+cases and authorized read-only surfaces. It does not authorize additional
+cases, a general audit of all repositories, private-session discovery,
+new runtime operations, controlled comparative benchmarks or architecture
+selection.
+
 ## Starting knowledge
 
 The investigator's initial case-specific input consists exclusively of:
@@ -228,6 +256,8 @@ For a later execution campaign, preserve:
 - Raw classifications.
 - Evaluator corrections.
 - Unresolved findings.
+- Empirical practice observations, negative cases, candidate hypotheses and their
+  supporting evidence or counterevidence.
 
 The investigator's reconstructed associations must be checked against
 independently observed authoritative GitHub objects. A plausible narrative is
@@ -267,6 +297,9 @@ of substantive truth:
    for a full campaign report. Incomplete execution retains its actual coverage;
    no general reliability percentage is allowed unless all six cases were
    examined under comparable, documented conditions.
+10. The empirical-extraction section distinguishes observed practices from
+    interpretations, hypotheses and candidate mechanisms; material claims are
+    linked to case evidence, with negative and unexpected observations preserved.
 
 ## Prohibited conclusions
 
@@ -284,7 +317,12 @@ The study MUST NOT infer:
 ## Output
 
 Produce one case assessment per frozen case and one bounded synthesis after
-separate execution authorization. Do not aggregate scores into a general
+separate execution authorization. Include a distinct empirical-extraction
+synthesis covering observed working practices, friction, unnecessary effort,
+missing information, alternative mechanisms, counterexamples and unexpected
+findings; preserve evidence, uncertainties and non-normative candidate status.
+The synthesis is Proto-Lithify empirical knowledge, whether or not a later
+Lithify confrontation uses it. Do not aggregate scores into a general
 reliability percentage unless all six cases were actually examined under
 comparable and documented conditions. The six cases are a purposive diagnostic
 sample, not a representative statistical sample. No study findings are claimed
