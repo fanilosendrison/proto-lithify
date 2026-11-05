@@ -37,6 +37,12 @@ prototype is an evidence source for later confrontation, not its mandatory
 architecture or a normative reference implementation. Calling systems retain
 semantic workflow policy.
 
+The non-normative [work-centric context-continuity hypotheses](docs/research/work-centric-continuity-hypothesis.md)
+examine whether explicit durable engineering-work records can provide sufficient
+and efficient cross-agent continuity compared with enriched session-context
+recovery. They establish no implementation choice, comparative superiority,
+or new Lithify product obligation.
+
 ## Requirements
 
 - Node.js 22.19.0 or newer
