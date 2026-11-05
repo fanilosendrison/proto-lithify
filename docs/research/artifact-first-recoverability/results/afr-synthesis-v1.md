@@ -124,11 +124,22 @@ erased.
 Case | Inv API | Inv tools | Inv seconds | Eval API | Eval tools | Eval seconds
 ---- | ------- | --------- | ----------- | -------- | ---------- | ------------
 AFR-01 | 33 | 35 | 526.593 | 31 | 47 | 616.970
-AFR-02 | 43 | 45 | 669.437 | 26 | 45 | 409.202
+AFR-02 | 43 | 45 | 669.437 | NOT_MEASURED | 45 | 409.202
 AFR-03 | 30 | 31 | 478.329 | 21 | 42 | 479.237
-AFR-04 | 22 | 24 | 434.331 | 14 | 33 | 465.236
+AFR-04 | 22 | 24 | 434.331 | NOT_MEASURED | 33 | 465.236
 AFR-05 | 34 | 38 | 545.948 | 18 | 51 | 542.960
-AFR-06 | 21 | 23 | 483.195 | 13 | 30 | 418.414
+AFR-06 | 21 | 23 | 483.195 | NOT_MEASURED | 30 | 418.414
+
+The evaluator API invocation counts for AFR-02, AFR-04, and AFR-06 remain
+unresolved across the published records. The original synthesis reported 26,
+14, and 13 respectively; their individual case reports reported 25, 13, and 12.
+The available admitted evidence does not establish a common counting boundary
+or determine which value should be treated as authoritative. The reconciled
+comparison therefore records `NOT_MEASURED` for these three quantities while
+preserving both historical sets of reported values. No cause is inferred from
+the one-invocation differences. Investigator counts, evaluator tool counts,
+elapsed times, case classifications, and substantive empirical conclusions are
+unchanged.
 
 Substantive durations are controller-measured elapsed intervals from the
 substantive request through report capture; they are not network latency. They
@@ -344,8 +355,9 @@ the disagreement was preserved rather than silently normalized.
 - **Merged does not imply a two-parent commit.** AFR-05 preserves the exact
   single-parent artifact and GitHub's merged association.
 - **Commit text can conflict with actual changes.** In AFR-05, [commit
-  `93622fa`][bytecode05] adds a bytecode file despite cleanup wording; [its
-  corrective parent][cleanup05] removes that file. The diff, not the message,
+  `93622fa`][bytecode05] adds a bytecode file despite cleanup wording; its
+  corrective child [commit `3e9a6bf`][cleanup05] removes that file and is the
+  parent of the starting artifact `a1b27ca`. The diff, not the message,
   establishes the observed change.
 - **Successful publication can preserve an unfavorable research result.**
   AFR-04 retains `BOUNDED_ADEQUACY_REFUTED` alongside publication GO.
