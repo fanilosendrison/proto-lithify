@@ -9,6 +9,7 @@ import type {
 } from "../src/project-items/types.ts";
 import type { ItemSnapshot } from "../src/receipts/schemas.ts";
 import { ArchiveExecutor, request, validResponses } from "./project-archive-fixture.ts";
+import { singleSelectObservation } from "./single-select-observation-fixture.ts";
 
 const fieldRequest = { ...request, fieldName: "Status", optionName: "Ready" };
 
@@ -39,6 +40,10 @@ class ArchiveGateway implements GithubProjectGateway {
 		assert.notEqual(result, undefined, "unexpected inspection");
 		if (result instanceof Error) throw result;
 		return result as ItemSnapshot;
+	}
+
+	async inspectItemObservation(request: ItemInspectionRequest) {
+		return singleSelectObservation(await this.inspectItem(request));
 	}
 
 	async resolveSingleSelect() {

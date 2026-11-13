@@ -5,7 +5,7 @@ asset_type: "documentation"
 domain: "proto-lithify"
 severity: "guideline"
 name: "Proto-Lithify CLI"
-version: "0.4.2"
+version: "0.4.3"
 ---
 
 # Proto-Lithify
@@ -103,6 +103,12 @@ without changing CLI syntax, native dependency semantics, or receipt schema
 version 2. Version 0.4.2 completes Project field and view pagination, rejects
 partial or unrepresentable catalog observations, and preserves the active
 standalone selector when launcher validation or activation fails.
+Version 0.4.3 corrects `field.set` type proof: text, number, date or iteration
+values cannot produce a verified single-select success merely by matching its
+string representation. Internal typed observations support both noop and fresh
+applied verification without changing CLI syntax, public snapshots or receipt
+schema version 2. Offline validation does not extend historical 0.4.2 live
+qualification or activate the global installation.
 
 Archived Project items remain members: archivedness is not absence and does not
 imply repository workflow completion. `item inspect` reports it, `item add`

@@ -5,7 +5,7 @@ asset_type: "contract"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify CLI contract"
-version: "0.4.2"
+version: "0.4.3"
 ---
 
 # CLI contract
@@ -27,7 +27,7 @@ not an accepted command argument.
 
 Success writes exactly one JSON receipt to stdout only after the complete
 candidate passes the strict producer schema. Diagnostics and errors write to
-stderr. Source version 0.4.2 emits schema version 2 for both success and error
+stderr. Source version 0.4.3 emits schema version 2 for both success and error
 receipts. Mutation success still requires a fresh read proving the requested
 postcondition. Project membership is established only when the Issue projection
 and the Project's own item collection contain the same unique item identity.
@@ -82,7 +82,7 @@ The generated schema assets are:
 - `versioned-error-receipt.schema.json`: explicit v1/v2 error reader.
 
 Consumers that require version 1 must use the historical asset. Consumers that
-accept persisted mixed data use the versioned reader. The 0.4.2 producer never
+accept persisted mixed data use the versioned reader. The 0.4.3 producer never
 emits version 1 merely for an older consumer. Runtime Zod and generated Draft
 2020-12 acceptance are independently checked with Ajv.
 
@@ -206,6 +206,29 @@ snapshot-validation change in 0.3.5. Historical `ItemSnapshot` JSON without
 `isArchived` does not validate against the current `ItemSnapshotSchema`, but it
 remains readable through the preserved weak version 1 receipt input contract.
 The strict version 2 producer requires the current nested snapshot.
+
+## Single-select value evidence
+
+Source 0.4.3 corrects false `field.set/noop` verification from non-single-select
+string collisions. Both `noop` and the fresh `applied` postcondition require
+provider-backed single-select value evidence, not just equality in the public
+`fields` string projection. The value and its field must have consistent
+single-select discriminators and a valid, unambiguous selected name. Missing,
+unknown or contradictory type evidence for an observed target value fails
+closed. Text, number, date and iteration values cannot witness field success.
+
+An absent target value is not a noop witness. For an active item, absence may
+proceed through explicit single-select field/option resolution and mutation;
+the fresh observation must then prove the requested single-select value. An
+archived item with an absent or differing value still fails before resolution.
+A genuine matching archived single-select remains a one-inspection noop with
+zero option resolution or edit. No unarchive or automatic retry is introduced.
+
+The internal typed observation is not serialized. CLI inputs, public
+`ItemSnapshot.fields: Record<string, string | null>`, generated schemas and
+producer receipt version 2 are unchanged. Public inspection retains its bounded
+string projection; that projection alone is not type evidence. This correction
+and its offline regressions do not extend historical 0.4.2 live qualification.
 
 ## Observation-backed mutation semantics
 
