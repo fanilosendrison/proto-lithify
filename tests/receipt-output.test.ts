@@ -8,6 +8,7 @@ import type {
 	ItemInspectionRequest,
 } from "../src/project-items/types.ts";
 import type { ItemSnapshot } from "../src/receipts/schemas.ts";
+import { singleSelectObservation } from "./single-select-observation-fixture.ts";
 
 const project = {
 	id: "PVT_project",
@@ -64,7 +65,7 @@ function graphqlPage(kind: "issue" | "items" | "fields" | "views" | "values") {
 						{
 							__typename: "ProjectV2ItemFieldSingleSelectValue",
 							name: "Ready",
-							field: { name: "Status" },
+							field: { __typename: "ProjectV2SingleSelectField", name: "Status" },
 						},
 					],
 					pageInfo,
@@ -85,8 +86,12 @@ class InvalidReceiptGateway implements GithubProjectGateway {
 			issue: { id: "I_issue", number: 42, repository: "example/repository" },
 			itemId: "PVTI_item",
 			isArchived: false,
-			fields: { "": this.inspectCalls === 1 ? "before" : "" },
+			fields: { "": this.inspectCalls === 1 ? "before" : "Ready" },
 		};
+	}
+
+	async inspectItemObservation(request: ItemInspectionRequest) {
+		return singleSelectObservation(await this.inspectItem(request));
 	}
 
 	async resolveSingleSelect() {
@@ -258,7 +263,7 @@ describe("final receipt output boundary", () => {
 			repository: "example/repository",
 			issueNumber: 42,
 			fieldName: "",
-			optionName: "",
+			optionName: "Ready",
 		});
 		assert.equal(invalidCandidate.outcome, "applied");
 		assert.throws(

@@ -7,6 +7,7 @@ import type {
 	ItemInspectionRequest,
 } from "../src/project-items/types.ts";
 import type { ItemSnapshot } from "../src/receipts/schemas.ts";
+import { singleSelectObservation } from "./single-select-observation-fixture.ts";
 
 class MutableGateway implements GithubProjectGateway {
 	currentOption = "Backlog";
@@ -39,6 +40,10 @@ class MutableGateway implements GithubProjectGateway {
 			isArchived: this.isArchived,
 			fields: { Status: this.currentOption },
 		};
+	}
+
+	async inspectItemObservation(request: ItemInspectionRequest) {
+		return singleSelectObservation(await this.inspectItem(request));
 	}
 
 	async resolveSingleSelect() {

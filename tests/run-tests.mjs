@@ -17,6 +17,7 @@ const testFiles = [
 	"tests/project-archive-pagination.test.ts",
 	"tests/project-archive-operations.test.ts",
 	"tests/project-operations.test.ts",
+	"tests/field-type-proof.test.ts",
 	"tests/project-concurrency.test.ts",
 	"tests/item-snapshot-schema.test.ts",
 	"tests/receipt-v2-valid.test.ts",
