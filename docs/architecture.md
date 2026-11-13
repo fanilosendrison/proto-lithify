@@ -5,7 +5,7 @@ asset_type: "architecture"
 domain: "proto-lithify"
 severity: "strict"
 name: "Proto-Lithify architecture"
-version: "0.4.2"
+version: "0.4.3"
 ---
 
 # Architecture
@@ -118,6 +118,30 @@ snapshot. Archive inclusion increases traversal size linearly with the complete
 Issue, Project, and selected field-value connections; no cache or partial fast
 path weakens absence proof.
 
+## Internal field-value evidence
+
+`ProjectV2Client.inspectItemObservation()` returns an internal `ItemObservation`
+containing a validated public snapshot and separate per-field value evidence.
+`project-field-value-observation.ts` retains the provider value discriminator,
+checks its payload and field discriminator, and marks insufficient or
+contradictory observations unproven. Text, number, date and iteration remain
+distinct from single-select even when their public string values collide.
+The evidence is assembled across the same complete field-value traversal and
+bound to the same membership identity/archive checks as the snapshot.
+
+`ProjectItemOperations.setSingleSelect()` requires consistent single-select
+evidence for an observed target value before accepting equality. An absent
+value cannot establish a noop. After submission, the fresh observation must
+again prove the single-select value, target identity continuity and active
+archivedness. Failure retains remote-effect uncertainty without retry.
+No option catalog read is moved ahead of the archived-item guard.
+
+`inspectItem()` exposes only the existing public snapshot. Item membership
+operations do not interpret the string map as single-select evidence. Neither
+the internal evidence map nor its discriminators enter version 2 receipts or
+generated schemas. Source 0.4.3 is a correctness patch, not a new live-provider
+qualification or activation of the global runtime.
+
 ## Concurrency and observation boundary
 
 Project-item operations validate every affirmative snapshot against the explicit
@@ -160,7 +184,7 @@ SUCCESSFUL_RECEIPT != PERMANENT_STATE
 
 ## Versioned receipt boundary
 
-The source 0.4.2 output boundary accepts only the nine strict version 2 success
+The source 0.4.3 output boundary accepts only the nine strict version 2 success
 branches defined by command and outcome. Each candidate is validated as a whole
 before any stdout byte is written. A validation failure emits one bounded,
 sanitized version 2 error with `RECEIPT_VALIDATION_FAILED`; it does not emit a
