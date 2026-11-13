@@ -2,6 +2,8 @@ import { z } from "zod";
 import type {
 	GithubProjectGateway,
 	ItemInspectionRequest,
+	ItemObservation,
+	ObservedProjectFieldValue,
 } from "../project-items/types.ts";
 import {
 	type ItemSnapshot,
@@ -15,6 +17,7 @@ import {
 	observeProjectCatalog,
 	observeResolvableProjectFields,
 } from "./project-catalog-observation.ts";
+import { observeProjectFieldValue } from "./project-field-value-observation.ts";
 import {
 	assertProjectFieldObservation,
 	assertProjectGraphqlResponseHasNoErrors,
@@ -41,7 +44,7 @@ const ProjectViewSchema = z.object({
 
 const ISSUE_PROJECT_ITEMS_QUERY = `query($owner:String!,$repository:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$repository){issue(number:$number){id projectItems(first:100,after:$cursor,includeArchived:true){nodes{id isArchived project{id number title url}} pageInfo{hasNextPage endCursor}}}}}`;
 const PROJECT_COLLECTION_ITEMS_QUERY = `query($projectId:ID!,$cursor:String){node(id:$projectId){... on ProjectV2{items(first:100,after:$cursor,archivedStates:[ARCHIVED,NOT_ARCHIVED]){nodes{id isArchived content{... on Issue{id}}} pageInfo{hasNextPage endCursor}}}}}`;
-const ITEM_FIELDS_QUERY = `query($itemId:ID!,$cursor:String){node(id:$itemId){... on ProjectV2Item{id isArchived fieldValues(first:100,after:$cursor){nodes{__typename ... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldNumberValue{number field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldDateValue{date field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldIterationValue{title field{... on ProjectV2FieldCommon{name}}}} pageInfo{hasNextPage endCursor}}}}}`;
+const ITEM_FIELDS_QUERY = `query($itemId:ID!,$cursor:String){node(id:$itemId){... on ProjectV2Item{id isArchived fieldValues(first:100,after:$cursor){nodes{__typename ... on ProjectV2ItemFieldSingleSelectValue{name field{__typename ... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldTextValue{text field{__typename ... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldNumberValue{number field{__typename ... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldDateValue{date field{__typename ... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldIterationValue{title field{__typename ... on ProjectV2FieldCommon{name}}}} pageInfo{hasNextPage endCursor}}}}}`;
 
 interface ConnectionPage<T> {
 	readonly nodes: readonly T[];
@@ -105,6 +108,12 @@ export class ProjectV2Client implements GithubProjectGateway {
 	}
 
 	async inspectItem(request: ItemInspectionRequest): Promise<ItemSnapshot> {
+		return (await this.inspectItemObservation(request)).snapshot;
+	}
+
+	async inspectItemObservation(
+		request: ItemInspectionRequest,
+	): Promise<ItemObservation> {
 		const project = await this.getProject(request.projectOwner, request.projectNumber);
 		const [repositoryOwner, repositoryName] = splitGitHubRepository(request.repository);
 		let cursor: string | null = null;
@@ -164,8 +173,8 @@ export class ProjectV2Client implements GithubProjectGateway {
 			issueMatches,
 			projectMatches,
 		);
-		const fields = await this.readItemFields(membership);
-		return ItemSnapshotSchema.parse({
+		const { fields, fieldValues } = await this.readItemFields(membership);
+		const snapshot = ItemSnapshotSchema.parse({
 			project,
 			issue: {
 				id: issueId,
@@ -176,6 +185,7 @@ export class ProjectV2Client implements GithubProjectGateway {
 			isArchived: membership.isArchived,
 			fields,
 		});
+		return { snapshot, fieldValues };
 	}
 
 	async resolveSingleSelect(
@@ -293,11 +303,13 @@ export class ProjectV2Client implements GithubProjectGateway {
 		return response;
 	}
 
-	private async readItemFields(
-		membership: ProjectMembershipObservation,
-	): Promise<Record<string, string | null>> {
+	private async readItemFields(membership: ProjectMembershipObservation): Promise<{
+		readonly fields: Record<string, string | null>;
+		readonly fieldValues: Record<string, ObservedProjectFieldValue>;
+	}> {
 		let cursor: string | null = null;
-		const fields: Record<string, string | null> = {};
+		const fields: Record<string, string | null> = Object.create(null);
+		const fieldValues: Record<string, ObservedProjectFieldValue> = Object.create(null);
 		const cursors = new Set<string>();
 		do {
 			const response = await this.graphql(ITEM_FIELDS_QUERY, {
@@ -325,14 +337,9 @@ export class ProjectV2Client implements GithubProjectGateway {
 						`Duplicate Project item field value for ${JSON.stringify(name)}`,
 					);
 				}
-				const value =
-					fieldValue.name ??
-					fieldValue.text ??
-					fieldValue.number ??
-					fieldValue.date ??
-					fieldValue.title ??
-					null;
-				fields[name] = value === null ? null : String(value);
+				const observed = observeProjectFieldValue(fieldValue);
+				fields[name] = observed.value;
+				fieldValues[name] = observed;
 			}
 			cursor = nextProjectObservationCursor(
 				page,
@@ -341,6 +348,6 @@ export class ProjectV2Client implements GithubProjectGateway {
 				"Project item field values",
 			);
 		} while (cursor !== null);
-		return fields;
+		return { fields, fieldValues };
 	}
 }
