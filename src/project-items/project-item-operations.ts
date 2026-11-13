@@ -9,6 +9,7 @@ import {
 import type {
 	GithubProjectGateway,
 	ItemInspectionRequest,
+	ItemObservation,
 	SingleSelectRequest,
 } from "./types.ts";
 
@@ -22,10 +23,9 @@ export class ProjectItemOperations {
 	async setSingleSelect(
 		request: SingleSelectRequest,
 	): Promise<CommandReceipt<ItemSnapshot, ItemSnapshot>> {
-		const before = validateRequestedTarget(
-			request,
-			await this.gateway.inspectItem(request),
-		);
+		const initial = await this.gateway.inspectItemObservation(request);
+		const before = validateRequestedTarget(request, initial.snapshot);
+		assertSingleSelectEvidence(initial, request.fieldName);
 		if (before.fields[request.fieldName] === request.optionName) {
 			return commandReceipt({
 				command: "field.set",
@@ -60,11 +60,18 @@ export class ProjectItemOperations {
 			fieldId,
 			optionId,
 		});
-		const after = await inspectAfterSubmittedMutation(
-			"Field mutation",
-			request,
-			this.gateway,
-		);
+		let fresh: ItemObservation;
+		let after: ItemSnapshot;
+		try {
+			fresh = await this.gateway.inspectItemObservation(request);
+			after = validateRequestedTarget(request, fresh.snapshot);
+			assertSingleSelectEvidence(fresh, request.fieldName);
+		} catch (error) {
+			throw new Error(
+				"Field mutation was submitted, but fresh target identity or single-select type inspection failed; do not retry automatically",
+				{ cause: error },
+			);
+		}
 		assertSameTarget(before, after);
 		if (after.isArchived) {
 			throw new Error(
@@ -140,6 +147,26 @@ export class ProjectItemOperations {
 					"A fresh read observed the exact Issue membership in the requested Project",
 			},
 		});
+	}
+}
+
+function assertSingleSelectEvidence(
+	observation: ItemObservation,
+	fieldName: string,
+): void {
+	const present = Object.hasOwn(observation.snapshot.fields, fieldName);
+	const evidence = Object.hasOwn(observation.fieldValues, fieldName)
+		? observation.fieldValues[fieldName]
+		: undefined;
+	if (!present && evidence === undefined) return;
+	if (
+		!present ||
+		evidence?.type !== "single-select" ||
+		typeof evidence.value !== "string" ||
+		evidence.value.length === 0 ||
+		evidence.value !== observation.snapshot.fields[fieldName]
+	) {
+		throw new Error("Field observation does not prove a single-select value");
 	}
 }
 

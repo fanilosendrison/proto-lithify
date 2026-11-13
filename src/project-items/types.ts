@@ -12,8 +12,25 @@ export interface SingleSelectRequest extends ItemInspectionRequest {
 	readonly optionName: string;
 }
 
+export interface ObservedProjectFieldValue {
+	readonly type:
+		| "single-select"
+		| "text"
+		| "number"
+		| "date"
+		| "iteration"
+		| "unproven";
+	readonly value: string | null;
+}
+
+export interface ItemObservation {
+	readonly snapshot: ItemSnapshot;
+	readonly fieldValues: Readonly<Record<string, ObservedProjectFieldValue>>;
+}
+
 export interface GithubProjectGateway {
 	inspectItem(request: ItemInspectionRequest): Promise<ItemSnapshot>;
+	inspectItemObservation(request: ItemInspectionRequest): Promise<ItemObservation>;
 	resolveSingleSelect(
 		projectId: string,
 		fieldName: string,
